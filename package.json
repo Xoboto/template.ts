@@ -1,0 +1,86 @@
+{
+  "name": "template.ts",
+  "version": "1.0.0",
+  "description": "A powerful, lightweight TypeScript template engine with reactive data binding, conditional rendering, loops, and events",
+  "main": "dist/template.js",
+  "module": "dist/template.js",
+  "types": "dist/template.d.ts",
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "build:examples": "tsc -p examples/tsconfig.json",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build && npm run test",
+    "dev": "npm run test:watch",
+    "example": "npm run build && npm run build:examples && npx http-server . -p 8080 -c-1 -o /examples/"
+  },
+  "keywords": [
+    "template",
+    "typescript",
+    "templating",
+    "reactive",
+    "data-binding",
+    "dom",
+    "frontend",
+    "ui",
+    "javascript",
+    "web",
+    "conditional-rendering",
+    "event-handling",
+    "transitions",
+    "lightweight",
+    "zero-dependencies"
+  ],
+  "author": {
+    "name": "Your Name",
+    "email": "your.email@example.com",
+    "url": "https://your-website.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/template.ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/template.ts/issues"
+  },
+  "homepage": "https://github.com/your-username/template.ts#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie <= 11"
+  ],
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  },
+  "eslintConfig": {
+    "extends": [
+      "@typescript-eslint/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "rules": {
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/explicit-function-return-type": "warn"
+    }
+  }
+}
