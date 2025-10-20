@@ -22,14 +22,9 @@ const state3: ListState = {
   styleName: function(index: number): string {
     return index % 2 === 0 ? 'even' : 'odd';
   },
-  removeItem: function(e: Event): void {
-    const element = e.target as HTMLElement;
-    const indexStr = element.getAttribute('data-index');
-    const index = indexStr !== null ? Number(indexStr) : -1;
-    if (index > -1) {
-      this.items.splice(index, 1);
-      binder3.update();
-    }
+  removeItem: function(e: Event, item: Item, index: number): void {
+    this.items.splice(index, 1);
+    binder3.update();
   },
   addItem: function(): void {
     const fruits = ['Mango', 'Pineapple', 'Grapes', 'Watermelon', 'Strawberry'];
