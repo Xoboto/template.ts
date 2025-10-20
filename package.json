@@ -14,16 +14,13 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "build:examples": "tsc -p examples/tsconfig.json",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "prepublishOnly": "npm run build && npm run test",
-    "dev": "npm run test:watch",
+    "prepublishOnly": "npm run build",
+    "dev": "npm run build:watch",
     "example": "npm run build && npm run build:examples && npx http-server . -p 8080 -c-1 -o /examples/"
   },
   "keywords": [
@@ -44,19 +41,19 @@
     "zero-dependencies"
   ],
   "author": {
-    "name": "Your Name",
-    "email": "your.email@example.com",
-    "url": "https://your-website.com"
+    "name": "Omid Mafakher",
+    "email": "info@xoboto.com",
+    "url": "https://github.com/xoboto/template.ts"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/template.ts.git"
+    "url": "git+https://github.com/xoboto/template.ts.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/template.ts/issues"
+    "url": "https://github.com/xoboto/template.ts/issues"
   },
-  "homepage": "https://github.com/your-username/template.ts#readme",
+  "homepage": "https://github.com/xoboto/template.ts#readme",
   "engines": {
     "node": ">=14.0.0"
   },
