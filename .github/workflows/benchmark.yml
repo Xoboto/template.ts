@@ -1,0 +1,94 @@
+name: Performance Benchmark
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build project
+      run: npm run build
+    
+    - name: Run benchmarks
+      run: |
+        # Create a simple benchmark script
+        cat > benchmark.js << 'EOF'
+        const { TemplateBinder } = require('./dist/template.js');
+        const { performance } = require('perf_hooks');
+        
+        // Setup DOM environment
+        const { JSDOM } = require('jsdom');
+        const dom = new JSDOM('<!DOCTYPE html><div id="app"></div>');
+        global.document = dom.window.document;
+        global.window = dom.window;
+        global.NodeFilter = dom.window.NodeFilter;
+        global.DOMParser = dom.window.DOMParser;
+        
+        // Benchmark data binding
+        const startTime = performance.now();
+        
+        document.getElementById('app').innerHTML = `
+          <div>
+            <h1>{{ title }}</h1>
+            <ul>
+              <li @for="items">{{ item.name }} - {{ item.value }}</li>
+            </ul>
+          </div>
+        `;
+        
+        const state = {
+          title: 'Benchmark Test',
+          items: Array.from({length: 1000}, (_, i) => ({
+            name: `Item ${i}`,
+            value: Math.random() * 100
+          }))
+        };
+        
+        const binder = new TemplateBinder('#app', state);
+        binder.bind();
+        
+        // Update benchmark
+        for(let i = 0; i < 100; i++) {
+          state.title = `Update ${i}`;
+          binder.update();
+        }
+        
+        const endTime = performance.now();
+        console.log(`Benchmark completed in ${endTime - startTime} milliseconds`);
+        EOF
+        
+    - name: Install JSDOM for benchmarks
+      run: npm install jsdom
+    
+    - name: Run benchmark
+      run: node benchmark.js
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '🚀 Performance benchmark completed! Check the logs for detailed results.'
+          })

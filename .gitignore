@@ -132,7 +132,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
-.github/
+.github/**.md
 
 # Debug files
 debug*.js
