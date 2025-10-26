@@ -155,8 +155,7 @@ export class TemplateBinder {
       const matches = text.match(/\{\{([^}]+)\}\}/g);
       
       if (matches && node.parentElement) {
-        matches.forEach(match => {
-          const expression = match.replace(/\{\{|\}\}/g, '').trim();
+        matches.forEach(() => {
           this.bindings.push({
             element: node.parentElement!,
             property: 'textContent',
@@ -528,7 +527,7 @@ export class TemplateBinder {
           }
           
           // Call the function with proper this context
-          return context[functionName].apply(context, args);
+          return context[functionName](...args);
         }
       }
       
