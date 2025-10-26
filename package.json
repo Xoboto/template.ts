@@ -1,6 +1,6 @@
 {
   "name": "template.ts",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A powerful, lightweight TypeScript template engine with reactive data binding, conditional rendering, loops, and events",
   "main": "dist/template.js",
   "module": "dist/template.js",
