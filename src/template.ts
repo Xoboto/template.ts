@@ -527,7 +527,7 @@ export class TemplateBinder {
           }
           
           // Call the function with proper this context
-          return context[functionName](...args);
+          return context[functionName].apply(context, args);
         }
       }
       
