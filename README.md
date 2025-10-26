@@ -26,6 +26,10 @@ Template.Ts is a simple yet powerful template engine that allows you to create d
 
 🎯 **Framework Agnostic** - Works with any project setup
 
+## 🚀 Live Examples
+
+Try it out right now: **[https://xoboto.github.io/template.ts/](https://xoboto.github.io/template.ts/)**
+
 ## Installation
 
 ### Using npm
@@ -500,6 +504,10 @@ binder.bind();
 
 ## Examples
 
+### 🌐 Live Examples
+**Try it online:** [https://xoboto.github.io/template.ts/](https://xoboto.github.io/template.ts/)
+
+### 💻 Run Examples Locally
 Check out the `/examples` folder for more complete examples:
 
 ```bash
