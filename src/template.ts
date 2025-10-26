@@ -155,8 +155,7 @@ export class TemplateBinder {
       const matches = text.match(/\{\{([^}]+)\}\}/g);
       
       if (matches && node.parentElement) {
-        matches.forEach(match => {
-          const expression = match.replace(/\{\{|\}\}/g, '').trim();
+        matches.forEach(() => {
           this.bindings.push({
             element: node.parentElement!,
             property: 'textContent',

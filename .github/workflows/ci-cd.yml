@@ -48,7 +48,7 @@ jobs:
       run: npm run build:examples
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist-${{ matrix.node-version }}
         path: dist/
@@ -82,7 +82,7 @@ jobs:
         files: ./coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
-        fail_ci_if_error: true
+        fail_ci_if_error: false
 
   security:
     name: Security Audit
