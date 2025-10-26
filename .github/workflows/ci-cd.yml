@@ -180,17 +180,46 @@ jobs:
     - name: Build examples
       run: npm run build:examples
     
+    - name: Check if Pages is enabled
+      id: pages-check
+      continue-on-error: true
+      uses: actions/github-script@v7
+      with:
+        script: |
+          try {
+            await github.rest.repos.getPages({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            return true;
+          } catch (error) {
+            if (error.status === 404) {
+              console.log('Pages not enabled, skipping deployment');
+              return false;
+            }
+            throw error;
+          }
+    
     - name: Setup Pages
+      if: steps.pages-check.outputs.result == 'true'
       uses: actions/configure-pages@v5
     
     - name: Upload artifact
+      if: steps.pages-check.outputs.result == 'true'
       uses: actions/upload-pages-artifact@v3
       with:
         path: './examples'
     
     - name: Deploy to GitHub Pages
+      if: steps.pages-check.outputs.result == 'true'
       id: deployment
       uses: actions/deploy-pages@v4
+    
+    - name: Pages not enabled
+      if: steps.pages-check.outputs.result != 'true'
+      run: |
+        echo "⚠️ GitHub Pages is not enabled for this repository."
+        echo "To enable it, go to Settings → Pages → Source → GitHub Actions"
 
   auto-merge:
     name: Auto-merge Dependabot PRs
