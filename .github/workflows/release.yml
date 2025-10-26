@@ -29,37 +29,33 @@ jobs:
       run: npm run build
     
     - name: Generate changelog
-      id: changelog
       run: |
-        delimiter=$(openssl rand -hex 8)
-        echo "CHANGELOG<<$delimiter" >> $GITHUB_OUTPUT
-        
         # Get the previous tag
         previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
         
+        # Write changelog to file
+        echo "## Changes in this Release" > release_body.md
+        echo "" >> release_body.md
+        
         if [ -n "$previous_tag" ]; then
           # Generate changelog from previous tag to current
-          git log $previous_tag..HEAD --pretty=format:"- %s (%an)" >> $GITHUB_OUTPUT
+          git log $previous_tag..HEAD --pretty=format:"- %s (%an)" >> release_body.md
         else
           # No previous tag, this is the initial release
-          echo "- Initial release" >> $GITHUB_OUTPUT
+          echo "- Initial release" >> release_body.md
         fi
         
-        echo "$delimiter" >> $GITHUB_OUTPUT
+        echo "" >> release_body.md
+        echo "## Assets" >> release_body.md
+        echo "- \`template.js\` - Main library file" >> release_body.md
+        echo "- \`template.d.ts\` - TypeScript definitions" >> release_body.md
+        echo "- \`template.js.map\` - Source maps" >> release_body.md
     
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         name: Release ${{ github.ref_name }}
-        body: |
-          ## Changes in this Release
-          
-          ${{ steps.changelog.outputs.CHANGELOG }}
-          
-          ## Assets
-          - `template.js` - Main library file
-          - `template.d.ts` - TypeScript definitions
-          - `template.js.map` - Source maps
+        body_path: release_body.md
         files: |
           dist/template.js
           dist/template.d.ts
