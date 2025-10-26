@@ -31,9 +31,21 @@ jobs:
     - name: Generate changelog
       id: changelog
       run: |
-        echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-        git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s (%an)" >> $GITHUB_OUTPUT 2>/dev/null || echo "- Initial release" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        delimiter=$(openssl rand -hex 8)
+        echo "CHANGELOG<<$delimiter" >> $GITHUB_OUTPUT
+        
+        # Get the previous tag
+        previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -n "$previous_tag" ]; then
+          # Generate changelog from previous tag to current
+          git log $previous_tag..HEAD --pretty=format:"- %s (%an)" >> $GITHUB_OUTPUT
+        else
+          # No previous tag, this is the initial release
+          echo "- Initial release" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "$delimiter" >> $GITHUB_OUTPUT
     
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
