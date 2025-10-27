@@ -63,7 +63,7 @@ export class TemplateBinder {
 
     // Create a proxy to track state changes
     this.stateProxy = new Proxy(this.state, {
-      set: (target, property, value) => {
+      set: (target, property, value): boolean => {
         target[property as string] = value;
         return true;
       }
@@ -178,13 +178,14 @@ export class TemplateBinder {
     
     allElements.forEach(el => {
       Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('@att:')) {
-          const attrName = attr.name.replace('@att:', '');
+        const isBoolean = attr.name.startsWith('@batt:');
+        if (isBoolean || attr.name.startsWith('@att:')) {
+          const attrName = attr.name.replace(isBoolean ? '@batt:' : '@att:', '');
           const expression = attr.value;
           
           this.bindings.push({
             element: el,
-            property: `attribute:${attrName}`,
+            property: isBoolean ? `bool-attribute:${attrName}` : `attribute:${attrName}`,
             expression: expression
           });
 
@@ -318,10 +319,18 @@ export class TemplateBinder {
     this.bindings.forEach(binding => {
       if (binding.property.startsWith('attribute:')) {
         const attrName = binding.property.replace('attribute:', '');
-        const value = this.evaluateExpression(binding.expression);
+        const value = this.evaluateCode(binding.expression, this.state);
         
         if (binding.element.getAttribute(attrName) !== value) {
           binding.element.setAttribute(attrName, value);
+        }
+      } else if (binding.property.startsWith('bool-attribute:')) {
+        const attrName = binding.property.replace('bool-attribute:', '');
+        const value = this.evaluateCode(binding.expression, this.state);
+        if (value) {
+          binding.element.setAttribute(attrName, '');
+        } else {
+          binding.element.removeAttribute(attrName);
         }
       }
     });
@@ -418,8 +427,17 @@ export class TemplateBinder {
       Array.from(el.attributes).forEach(attr => {
         if (attr.name.startsWith('@att:')) {
           const attrName = attr.name.replace('@att:', '');
-          const value = this.evaluateExpressionWithContext(attr.value, context);
+          const value = this.evaluateCode(attr.value, context);
           el.setAttribute(attrName, value);
+          el.removeAttribute(attr.name);
+        } else if (attr.name.startsWith('@batt:')) {
+          const attrName = attr.name.replace('@batt:', '');
+          const value = this.evaluateCode(attr.value, context);
+          if (value) {
+            el.setAttribute(attrName, '');
+          } else {
+            el.removeAttribute(attrName);
+          }
           el.removeAttribute(attr.name);
         } else if (attr.name.startsWith('@on:')) {
           const eventName = attr.name.replace('@on:', '');

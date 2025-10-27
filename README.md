@@ -16,6 +16,7 @@ Template.Ts is a simple yet powerful template engine that allows you to create d
 - `@for="array"` - Loop through arrays
 - `@if="condition"` - Conditional rendering
 - `@att:name="value"` - Dynamic attribute binding
+- `@batt:name="condition"` - Boolean attribute binding
 - `@on:event="handler"` - Event handling
 
 🚀 **Lightweight** - Zero dependencies, minimal footprint
@@ -181,7 +182,7 @@ Bind any HTML attribute dynamically:
 ```html
 <div id="app">
   <input @att:type="inputType" @att:placeholder="placeholderText" />
-  <button @att:disabled="isDisabled">Submit</button>
+  <button @batt:disabled="isDisabled">Submit</button>
   <div @att:class="containerClass">Content</div>
   <img @att:src="imageUrl" @att:alt="imageAlt" />
 </div>
@@ -191,7 +192,7 @@ Bind any HTML attribute dynamically:
 const state = {
   inputType: 'email',
   placeholderText: 'Enter your email',
-  isDisabled: false,
+  isDisabled: true, // String value for disabled attribute
   containerClass: 'container active',
   imageUrl: '/images/logo.png',
   imageAlt: 'Company Logo'
@@ -200,6 +201,40 @@ const state = {
 const binder = new TemplateBinder('#app', state);
 binder.bind();
 ```
+
+### Boolean Attributes with @batt:
+
+Use `@batt:` for boolean attributes that should be present or absent based on a condition:
+
+```html
+<div id="app">
+  <input type="checkbox" @batt:checked="isSelected" />
+  <button @batt:disabled="isLoading">Submit</button>
+  <option @batt:selected="isDefaultOption">Default</option>
+  <input @batt:required="isRequired" />
+  <details @batt:open="isExpanded">
+    <summary>Click to expand</summary>
+    <p>Content here</p>
+  </details>
+</div>
+```
+
+```typescript
+const state = {
+  isSelected: true,      // Adds checked="" attribute
+  isLoading: false,      // Removes disabled attribute
+  isDefaultOption: true, // Adds selected="" attribute
+  isRequired: true,      // Adds required="" attribute
+  isExpanded: false      // Removes open attribute
+};
+
+const binder = new TemplateBinder('#app', state);
+binder.bind();
+```
+
+**Difference between @att: and @batt:**
+- `@att:disabled="value"` → Sets `disabled="value"` (always present with the value)
+- `@batt:disabled="condition"` → Adds `disabled=""` if condition is truthy, removes it if falsy
 
 ### Event Handling with @on:
 
@@ -332,7 +367,7 @@ binder.bind();
       <li @for="todos" @att:class="item.completed ? 'completed' : ''">
         <input 
           type="checkbox" 
-          @att:checked="item.completed" 
+          @batt:checked="item.completed" 
           @on:change="toggleTodo" 
         />
         <span>{{ item.text }}</span>
@@ -469,6 +504,7 @@ binder.destroy();
 | `@for="arrayName"` | Loop through array | `<li @for="items">{{ item.name }}</li>` |
 | `@if="condition"` | Conditional rendering | `<p @if="isVisible">Hello</p>` |
 | `@att:name="value"` | Dynamic attribute | `<div @att:class="className"></div>` |
+| `@batt:name="condition"` | Boolean attribute | `<input @batt:checked="isSelected" />` |
 | `@on:event="handler"` | Event listener | `<button @on:click="handleClick">Click</button>` |
 
 ## TypeScript Support
