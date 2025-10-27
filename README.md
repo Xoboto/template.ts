@@ -531,6 +531,76 @@ const binder = new TemplateBinder('#app', state);
 binder.bind();
 ```
 
+## Transition Effects
+
+Template.Ts automatically adds a CSS class when values change, allowing you to create smooth transition effects without extra code!
+
+> Limitation: This feature available only on value update. It has no effect on list or conditional view change.
+
+### How It Works
+
+When any bound value updates, the transition class is automatically added to the element, then removed after the animation completes. You just need to define the CSS:
+
+### Custom Transition Class
+
+```typescript
+const binder = new TemplateBinder('#app', state, 'my-transition');
+```
+
+```css
+.my-transition {
+  transition: all 0.3s ease;
+  transform: scale(1.1);
+  color: #1976d2;
+}
+```
+
+### More Transition Examples
+
+```css
+/* Fade effect */
+.transition-fade {
+  animation: fade 0.3s ease-in-out;
+}
+
+@keyframes fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Scale pulse */
+.transition-scale-pluse {
+  animation: pulse 0.4s ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Slide effect */
+.transition-slide {
+  animation: slide 0.3s ease-out;
+}
+
+@keyframes slide {
+  0% { transform: translateX(-10px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Color change */
+.transition-color {
+  transition: color 0.5s ease;
+  color: #d32f2f;
+}
+```
+
+**That's it!** No extra JavaScript needed - just define your CSS and the transitions happen automatically when values update.
+
+> NOTE: The transition css will apply to element once .update() call.
+
+> NOTE: .update method can be called with `withAnimation` parameter to control animation when needed to bypass animation. the default value is **true**.
+
 ## Browser Support
 
 - Chrome/Edge (latest)

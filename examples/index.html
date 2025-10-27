@@ -170,6 +170,26 @@
       color: #7f8c8d;
       font-style: italic;
     }
+
+    /* Transition effect when values update */
+    .updatedTransition {
+      animation: highlight 0.5s ease-in-out;
+    }
+
+    @keyframes highlight {
+      0% { 
+        background-color: #ffeb3b;
+        transform: scale(1);
+      }
+      50% { 
+        background-color: #ffd54f;
+        transform: scale(1.02);
+      }
+      100% { 
+        background-color: transparent;
+        transform: scale(1);
+      }
+    }
   </style>
 </head>
 <body>
@@ -182,7 +202,7 @@
       <h3>{{ title }}</h3>
       <p>{{ description }}</p>
       <p>Created by: {{ author }}</p>
-      <p>Time: {{ time }}</p>
+      <p>Time: <span>{{ time }}</span></p>
     </div>
   </div>
 

@@ -51,8 +51,12 @@ export class TemplateBinder {
   private loopBindings: LoopBinding[] = [];
   private originalTemplate: string = '';
   private stateProxy: State;
+  private transitionClass?: string;
 
-  constructor(selector: string, initialState: State = {}) {
+  constructor(selector: string, initialState: State = {}, transitionClass?: string) {
+    if (transitionClass) {
+      this.transitionClass = transitionClass;
+    }
     this.container = document.querySelector(selector);
     if (!this.container) {
       throw new Error(`Container element not found: ${selector}`);
@@ -89,11 +93,11 @@ export class TemplateBinder {
   /**
    * Update the DOM with current state
    */
-  public update(): void {
-    this.updateTextBindings();
+  public update(withAnimation: boolean = true): void {
+    this.updateTextBindings(withAnimation);
     this.updateConditionals();
     this.updateLoops();
-    this.updateAttributes();
+    this.updateAttributes(withAnimation);
   }
 
   /**
@@ -301,12 +305,15 @@ export class TemplateBinder {
   /**
    * Update text bindings
    */
-  private updateTextBindings(): void {
+  private updateTextBindings(withAnimation: boolean = false): void {
     this.bindings.forEach(binding => {
       if (binding.property === 'textContent') {
         const text = this.evaluateExpression(binding.expression);
         if (binding.element.textContent !== text) {
           binding.element.textContent = text;
+          if (withAnimation) {
+            this.applyTransition(binding.element);
+          }
         }
       }
     });
@@ -315,7 +322,7 @@ export class TemplateBinder {
   /**
    * Update attribute bindings
    */
-  private updateAttributes(): void {
+  private updateAttributes(withAnimation: boolean = false): void {
     this.bindings.forEach(binding => {
       if (binding.property.startsWith('attribute:')) {
         const attrName = binding.property.replace('attribute:', '');
@@ -323,14 +330,24 @@ export class TemplateBinder {
         
         if (binding.element.getAttribute(attrName) !== value) {
           binding.element.setAttribute(attrName, value);
+          if (withAnimation) {
+            this.applyTransition(binding.element);
+          }
         }
       } else if (binding.property.startsWith('bool-attribute:')) {
         const attrName = binding.property.replace('bool-attribute:', '');
         const value = this.evaluateCode(binding.expression, this.state);
-        if (value) {
+        const hasAttr = binding.element.hasAttribute(attrName);
+        if (value && !hasAttr) {
           binding.element.setAttribute(attrName, '');
-        } else {
+          if (withAnimation) {
+            this.applyTransition(binding.element);
+          }
+        } else if (!value && hasAttr) {
           binding.element.removeAttribute(attrName);
+          if (withAnimation) {
+            this.applyTransition(binding.element);
+          }
         }
       }
     });
@@ -589,6 +606,28 @@ export class TemplateBinder {
     this.eventBindings = [];
     this.conditionalBindings = [];
     this.loopBindings = [];
+  }
+
+  /**
+   * Apply transition effect to an element when its value updates
+   */
+  private applyTransition(element: Element): void {
+    if (!this.transitionClass) return;
+    element.classList.add(this.transitionClass);
+    
+    // Remove the class after animation completes
+    const removeTransition = (): void => {
+      element.classList.remove(this.transitionClass!);
+      element.removeEventListener('animationend', removeTransition);
+      element.removeEventListener('transitionend', removeTransition);
+    };
+    
+    // Listen for both animation and transition end events
+    element.addEventListener('animationend', removeTransition);
+    element.addEventListener('transitionend', removeTransition);
+    
+    // Fallback: remove after 600ms if no events fire
+    setTimeout(removeTransition, 600);
   }
 
   /**
