@@ -53,13 +53,19 @@ export class TemplateBinder {
   private stateProxy: State;
   private transitionClass?: string;
 
-  constructor(selector: string, initialState: State = {}, transitionClass?: string) {
+  constructor(selectorOrElement: string | Element, initialState: State = {}, transitionClass?: string) {
     if (transitionClass) {
       this.transitionClass = transitionClass;
     }
-    this.container = document.querySelector(selector);
-    if (!this.container) {
-      throw new Error(`Container element not found: ${selector}`);
+    
+    // Handle both string selector and Element
+    if (typeof selectorOrElement === 'string') {
+      this.container = document.querySelector(selectorOrElement);
+      if (!this.container) {
+        throw new Error(`Container element not found: ${selectorOrElement}`);
+      }
+    } else {
+      this.container = selectorOrElement;
     }
 
     this.state = initialState;

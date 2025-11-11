@@ -452,11 +452,30 @@ binder.bind();
 #### Constructor
 
 ```typescript
-new TemplateBinder(selector: string, initialState: State)
+new TemplateBinder(selectorOrElement: string | Element, initialState: State, transitionClass?: string)
 ```
 
-- `selector`: CSS selector for the container element
+**Parameters:**
+- `selectorOrElement`: CSS selector string (e.g., `"#app"`) or HTMLElement reference
 - `initialState`: Object containing your state and methods
+- `transitionClass` (optional): CSS class name for transition effects (default: `"updated"`)
+
+**Examples:**
+
+```typescript
+// Using CSS selector
+const binder = new TemplateBinder('#app', state);
+
+// Using Element reference
+const element = document.getElementById('app');
+const binder = new TemplateBinder(element, state);
+
+// With custom transition class
+const binder = new TemplateBinder('#app', state, 'my-transition');
+
+// Element with custom transition
+const binder = new TemplateBinder(element, state, 'fade-effect');
+```
 
 #### Methods
 
@@ -467,12 +486,13 @@ Processes the template and performs initial rendering.
 binder.bind();
 ```
 
-##### `update()`
+##### `update(withAnimation?: boolean)`
 Updates the DOM with the current state. Call this after modifying state values.
 
 ```typescript
 state.title = 'New Title';
-binder.update();
+binder.update(); // With animation (default: true)
+binder.update(false); // Without animation
 ```
 
 ##### `setState(key, value)`

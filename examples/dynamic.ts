@@ -16,5 +16,7 @@ const state5: DynamicState = {
   }
 };
 
-const binder5 = new TemplateBinder('#example5', state5);
+const example5Element = document.querySelector('#example5')!;
+
+const binder5 = new TemplateBinder(example5Element, state5);
 binder5.bind();
