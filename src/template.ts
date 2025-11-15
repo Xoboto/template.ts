@@ -231,7 +231,7 @@ export class TemplateBinder {
           // Attach the event listener
           const handler = this.state[handlerName];
           if (typeof handler === 'function') {
-            el.addEventListener(eventName, handler.bind(this.state));
+            el.addEventListener(eventName, ev => handler.call(this.state, ev));
           }
 
           // Remove the directive attribute
