@@ -477,6 +477,66 @@ const binder = new TemplateBinder('#app', state, 'my-transition');
 const binder = new TemplateBinder(element, state, 'fade-effect');
 ```
 
+#### Auto-Update Property
+
+Enable automatic DOM updates after event handlers execute by setting the `autoUpdate` property:
+
+```typescript
+const binder = new TemplateBinder('#app', state);
+binder.autoUpdate = true; // Enable auto-update
+binder.bind();
+```
+
+When `autoUpdate` is enabled, you don't need to manually call `update()` after event handlers:
+
+```typescript
+// Without auto-update (manual)
+const state = {
+  count: 0,
+  increment: function() {
+    this.count++;
+    binder.update(); // Must call manually
+  }
+};
+const binder = new TemplateBinder('#app', state);
+binder.bind();
+
+// With auto-update (automatic)
+const state = {
+  count: 0,
+  increment: function() {
+    this.count++; // update() called automatically!
+  }
+};
+const binder = new TemplateBinder('#app', state);
+binder.autoUpdate = true; // Enable auto-update
+binder.bind();
+```
+
+**Async Handler Support:**
+Auto-update also works with async handlers - it waits for Promises to resolve:
+
+```typescript
+const state = {
+  data: null,
+  loadData: async function() {
+    this.data = await fetch('/api/data').then(r => r.json());
+    // update() called automatically after Promise resolves!
+  }
+};
+const binder = new TemplateBinder('#app', state);
+binder.autoUpdate = true;
+binder.bind();
+```
+
+**Toggle Auto-Update:**
+You can enable or disable auto-update at any time:
+
+```typescript
+binder.autoUpdate = true;  // Enable
+binder.autoUpdate = false; // Disable
+```
+
 #### Methods
 
 ##### `bind()`
@@ -487,7 +547,7 @@ binder.bind();
 ```
 
 ##### `update(withAnimation?: boolean)`
-Updates the DOM with the current state. Call this after modifying state values.
+Updates the DOM with the current state. Call this after modifying state values (unless autoUpdate is enabled).
 
 ```typescript
 state.title = 'New Title';

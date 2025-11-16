@@ -12,7 +12,7 @@ interface ListState {
   addItem: () => void;
 }
 
-// Example 3: List Rendering with @for
+// Example 3: List Rendering with @for (with auto-update)
 const state3: ListState = {
   items: [
     { name: 'Apple', price: 1.99 },
@@ -24,7 +24,7 @@ const state3: ListState = {
   },
   removeItem: function(e: Event, item: Item, index: number): void {
     this.items.splice(index, 1);
-    binder3.update();
+    // No need to call binder3.update() - it's automatic!
   },
   addItem: function(): void {
     const fruits = ['Mango', 'Pineapple', 'Grapes', 'Watermelon', 'Strawberry'];
@@ -35,9 +35,10 @@ const state3: ListState = {
       name: randomFruit,
       price: randomPrice
     });
-    binder3.update();
+    // No need to call binder3.update() - it's automatic!
   }
 };
 
 const binder3 = new TemplateBinder('#example3', state3);
+binder3.autoUpdate = true; // Enable auto-update as a property
 binder3.bind();

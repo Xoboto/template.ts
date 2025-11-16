@@ -52,6 +52,7 @@ export class TemplateBinder {
   private originalTemplate: string = '';
   private stateProxy: State;
   private transitionClass?: string;
+  public autoUpdate: boolean = false;
 
   constructor(selectorOrElement: string | Element, initialState: State = {}, transitionClass?: string) {
     if (transitionClass) {
@@ -231,7 +232,21 @@ export class TemplateBinder {
           // Attach the event listener
           const handler = this.state[handlerName];
           if (typeof handler === 'function') {
-            el.addEventListener(eventName, ev => handler.call(this.state, ev));
+            el.addEventListener(eventName, (ev) => {
+              const result = handler.call(this.state, ev);
+              
+              // Auto-update if enabled
+              if (this.autoUpdate) {
+                // If handler returns a Promise, wait for it
+                if (result && typeof result.then === 'function') {
+                  result.then(() => this.update());
+                } else {
+                  this.update();
+                }
+              }
+              
+              return result;
+            });
           }
 
           // Remove the directive attribute
@@ -468,7 +483,21 @@ export class TemplateBinder {
           const handler = this.state[handlerName];
           
           if (typeof handler === 'function') {
-            el.addEventListener(eventName, ev => handler.call(this.state, ev, item, index));
+            el.addEventListener(eventName, (ev) => {
+              const result = handler.call(this.state, ev, item, index);
+              
+              // Auto-update if enabled
+              if (this.autoUpdate) {
+                // If handler returns a Promise, wait for it
+                if (result && typeof result.then === 'function') {
+                  result.then(() => this.update());
+                } else {
+                  this.update();
+                }
+              }
+              
+              return result;
+            });
           }
           el.removeAttribute(attr.name);
         }

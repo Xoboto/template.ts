@@ -7,22 +7,24 @@ interface CounterState {
   reset: () => void;
 }
 
-// Example 2: Counter with Events
+// Example 2: Counter with Events (with auto-update enabled)
+// Notice: No need to call binder2.update() in event handlers!
 const state2: CounterState = {
   count: 0,
-  increment: function() {
+  increment: function(): void {
     this.count++;
-    binder2.update();
+    // update() is called automatically!
   },
-  decrement: function() {
+  decrement: function(): void {
     this.count--;
-    binder2.update();
+    // update() is called automatically!
   },
-  reset: function() {
+  reset: function(): void {
     this.count = 0;
-    binder2.update();
+    // update() is called automatically!
   }
 };
 
 const binder2 = new TemplateBinder('#example2', state2);
+binder2.autoUpdate = true; // Enable auto-update as a property
 binder2.bind();
