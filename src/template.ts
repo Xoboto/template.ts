@@ -36,7 +36,7 @@ interface ConditionalBinding {
 interface LoopBinding {
   element: Element;
   itemsKey: string;
-  template: string;
+  templateElement: Element;  // Store the actual element instead of HTML string
   parentElement: Element;
   placeholder: Comment;
   renderedElements: Element[];
@@ -300,7 +300,7 @@ export class TemplateBinder {
           this.loopBindings.push({
             element: el,
             itemsKey: itemsKey,
-            template: template,
+            templateElement: templateElement,  // Store the cloned element
             parentElement: parent,
             placeholder: placeholder,
             renderedElements: []
@@ -419,12 +419,9 @@ export class TemplateBinder {
   /**
    * Create an element for a loop iteration
    */
-  private createLoopElement(template: string, item: any, index: number, items: any[]): Element | null {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(template, 'text/html');
-    const element = doc.body.firstElementChild;
-
-    if (!element) return null;
+  private createLoopElement(templateElement: Element, item: any, index: number, items: any[], parentItem?: any): Element | null {
+    // Clone the template element - no parsing needed!
+    const element = templateElement.cloneNode(true) as Element;
 
     // Remove @for attribute
     element.removeAttribute('@for');
