@@ -1,6 +1,6 @@
 {
   "name": "template.ts",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A powerful, lightweight TypeScript template engine with reactive data binding, conditional rendering, loops, and events",
   "main": "dist/template.js",
   "module": "dist/template.js",
@@ -46,19 +46,22 @@
   "author": {
     "name": "Omid Mafakher",
     "email": "info@xoboto.com",
-    "url": "https://github.com/xoboto/template.ts"
+    "url": "https://github.com/Xoboto/template.ts"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xoboto/template.ts.git"
+    "url": "git+https://github.com/Xoboto/template.ts.git"
   },
   "bugs": {
-    "url": "https://github.com/xoboto/template.ts/issues"
+    "url": "https://github.com/Xoboto/template.ts/issues"
   },
-  "homepage": "https://github.com/xoboto/template.ts#readme",
+  "homepage": "https://github.com/Xoboto/template.ts#readme",
   "engines": {
     "node": ">=14.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "browserslist": [
     "> 1%",

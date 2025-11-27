@@ -190,6 +190,93 @@
         transform: scale(1);
       }
     }
+
+    /* Data Table Styles */
+    data-table {
+      display: block;
+    }
+
+    .data-table {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .table-header {
+      padding: 15px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      max-width: 300px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    .data-table table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      background: #3498db;
+      color: white;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+
+    .data-table th:hover {
+      background: #2980b9;
+    }
+
+    .sort-indicator {
+      margin-left: 5px;
+      font-size: 10px;
+    }
+
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid #ecf0f1;
+    }
+
+    .data-table tbody tr {
+      transition: background 0.2s;
+    }
+
+    .data-table tbody tr:hover {
+      background: #f8f9fa;
+      cursor: pointer;
+    }
+
+    .data-table .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #7f8c8d;
+      font-style: italic;
+    }
+
+    .table-footer {
+      padding: 12px 15px;
+      background: #f8f9fa;
+      border-top: 1px solid #ddd;
+      font-size: 14px;
+      color: #7f8c8d;
+    }
   </style>
 </head>
 <body>
@@ -293,11 +380,48 @@
     </div>
   </div>
 
+  <!-- Example 7: DataTable - Employee Management -->
+  <div class="example">
+    <h2>Example 7: DataTable - Employee Management</h2>
+    <p style="margin-bottom: 15px; color: #7f8c8d;">
+      A sortable and searchable table component. Click headers to sort, use search to filter.
+    </p>
+    <div id="employee-table"></div>
+  </div>
+
+  <!-- Example 8: DataTable - Product Inventory -->
+  <div class="example">
+    <h2>Example 8: DataTable - Product Inventory</h2>
+    <p style="margin-bottom: 15px; color: #7f8c8d;">
+      Browse and search through product catalog with real-time filtering.
+    </p>
+    <div id="product-table"></div>
+  </div>
+
+  <!-- Example 9: DataTable - Simple User List -->
+  <div class="example">
+    <h2>Example 9: DataTable - Simple User List</h2>
+    <p style="margin-bottom: 15px; color: #7f8c8d;">
+      Minimal table without search or footer features.
+    </p>
+    <div id="user-table"></div>
+  </div>
+
+  <!-- Example 10: DataTable - Empty State -->
+  <div class="example">
+    <h2>Example 10: DataTable - Empty State</h2>
+    <p style="margin-bottom: 15px; color: #7f8c8d;">
+      Demonstrating how the table handles empty data with custom message.
+    </p>
+    <div id="empty-table"></div>
+  </div>
+
   <script type="module" src="./dist/examples/basic.js"></script>
   <script type="module" src="./dist/examples/counter.js"></script>
   <script type="module" src="./dist/examples/list.js"></script>
   <script type="module" src="./dist/examples/todo.js"></script>
   <script type="module" src="./dist/examples/dynamic.js"></script>
   <script type="module" src="./dist/examples/users.js"></script>
+  <script type="module" src="./dist/examples/data-table-demo.js"></script>
 </body>
 </html>

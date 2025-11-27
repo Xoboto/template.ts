@@ -284,12 +284,25 @@ export class TemplateBinder {
    * Process loops @for="itemsKey"
    */
   private processLoops(element: Element): void {
-    const elements = Array.from(element.querySelectorAll('[\\@for]'));
+    const allElements = Array.from(element.querySelectorAll('[\\@for]'));
     
-    elements.forEach(el => {
+    // Filter to only top-level loops (not nested inside another @for)
+    const topLevelElements = allElements.filter(el => {
+      let parent = el.parentElement;
+      while (parent && parent !== element) {
+        if (parent.hasAttribute('@for')) {
+          return false; // This is nested, skip it
+        }
+        parent = parent.parentElement;
+      }
+      return true; // This is top-level
+    });
+    
+    topLevelElements.forEach(el => {
       const itemsKey = el.getAttribute('@for');
       if (itemsKey) {
-        const template = el.outerHTML;
+        // Clone the element before removing it - store element, not string
+        const templateElement = el.cloneNode(true) as Element;
         const parent = el.parentElement;
         
         if (parent) {
@@ -407,7 +420,7 @@ export class TemplateBinder {
 
       // Render new elements
       items.forEach((item, index) => {
-        const element = this.createLoopElement(binding.template, item, index, items);
+        const element = this.createLoopElement(binding.templateElement, item, index, items);
         if (element) {
           binding.parentElement.insertBefore(element, binding.placeholder.nextSibling);
           binding.renderedElements.push(element);
@@ -427,14 +440,42 @@ export class TemplateBinder {
     element.removeAttribute('@for');
 
     // Create a context for this iteration
-    const context = {
+    const context: Record<string, any> = {
       item: item,
       index: index,
       items: items,
+      parent: parentItem,
       ...this.state
     };
 
-    // Process text content
+    // FIRST: Process nested loops BEFORE evaluating text/attributes
+    // This prevents inner template content from being evaluated with wrong context
+    const allElements = [element, ...Array.from(element.querySelectorAll('*'))];
+    
+    allElements.forEach(el => {
+      if (el.hasAttribute('@for')) {
+        const nestedItemsKey = el.getAttribute('@for');
+        if (nestedItemsKey) {
+          const nestedItems = this.evaluateCode(nestedItemsKey, context);
+          
+          if (Array.isArray(nestedItems)) {
+            const parentEl = el.parentElement;
+            const nestedTemplateElement = el.cloneNode(true) as Element;
+
+            nestedItems.forEach((nestedItem: any, nestedIndex: number) => {
+              const nestedElement = this.createLoopElement(nestedTemplateElement, nestedItem, nestedIndex, nestedItems, context.item);
+              if (nestedElement) {
+                parentEl?.appendChild(nestedElement);
+              }
+            });
+
+            el.remove();
+          }
+        }
+      }
+    });
+
+    // SECOND: Process text content (after nested loops are handled)
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
@@ -455,10 +496,10 @@ export class TemplateBinder {
       node.textContent = evaluated;
     });
 
-    // Process attributes for ALL elements (root + nested)
-    const allElements = [element, ...Array.from(element.querySelectorAll('*'))];
+    // THIRD: Process attributes (after nested loops and text)
+    const remainingElements = [element, ...Array.from(element.querySelectorAll('*'))];
     
-    allElements.forEach(el => {
+    remainingElements.forEach(el => {
       Array.from(el.attributes).forEach(attr => {
         if (attr.name.startsWith('@att:')) {
           const attrName = attr.name.replace('@att:', '');
@@ -497,6 +538,11 @@ export class TemplateBinder {
             });
           }
           el.removeAttribute(attr.name);
+        } else if (attr.name === '@if') {
+          const condition = attr.value;
+          const shouldShow = this.evaluateConditionWithContext(condition, context);
+          (el as HTMLElement).style.display = shouldShow ? '' : 'none';
+          el.removeAttribute('@if');
         }
       });
     });

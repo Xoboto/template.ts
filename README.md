@@ -148,6 +148,13 @@ Inside loops, you have access to:
 - `index` - Current index (0-based)
 - `items` - The entire array
 
+**Nested Loops:** In nested loops, use `parent` to access the outer loop's item:
+```html
+<tr @for="rows">
+  <td @for="columns">{{ getValue(parent, item.key) }}</td>
+</tr>
+```
+
 ### Conditional Rendering with @if
 
 Show or hide elements based on conditions:
