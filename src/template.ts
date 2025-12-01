@@ -42,8 +42,10 @@ interface LoopBinding {
   renderedElements: Element[];
 }
 
+type RootElement = Element | ShadowRoot;
+
 export class TemplateBinder {
-  private container: Element | null;
+  private container: RootElement | null;
   private state: State;
   private bindings: BindingInfo[] = [];
   private eventBindings: EventBinding[] = [];
@@ -54,7 +56,7 @@ export class TemplateBinder {
   private transitionClass?: string;
   public autoUpdate: boolean = false;
 
-  constructor(selectorOrElement: string | Element, initialState: State = {}, transitionClass?: string) {
+  constructor(selectorOrElement: string | RootElement, initialState: State = {}, transitionClass?: string) {
     if (transitionClass) {
       this.transitionClass = transitionClass;
     }
@@ -144,9 +146,9 @@ export class TemplateBinder {
   }
 
   /**
-   * Process text bindings {{ expression }}
+   * Process text bindings with {{ expression }}
    */
-  private processTextBindings(element: Element): void {
+  private processTextBindings(element: RootElement): void {
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
@@ -180,12 +182,14 @@ export class TemplateBinder {
   /**
    * Process attribute bindings @att:attributeName="expression"
    */
-  private processAttributeBindings(element: Element): void {
+  private processAttributeBindings(element: RootElement): void {
     // Get all elements in the container
     const elements = element.querySelectorAll('*');
     
-    // Also check the root element itself
-    const allElements = [element, ...Array.from(elements)];
+    // Also check the root element itself (only if it's an Element)
+    const allElements = element instanceof Element 
+      ? [element, ...Array.from(elements)] 
+      : Array.from(elements);
     
     allElements.forEach(el => {
       Array.from(el.attributes).forEach(attr => {
@@ -210,12 +214,14 @@ export class TemplateBinder {
   /**
    * Process event bindings @on:eventName="handler"
    */
-  private processEventBindings(element: Element): void {
+  private processEventBindings(element: RootElement): void {
     // Get all elements in the container
     const elements = element.querySelectorAll('*');
     
-    // Also check the root element itself
-    const allElements = [element, ...Array.from(elements)];
+    // Also check the root element itself (only if it's an Element)
+    const allElements = element instanceof Element 
+      ? [element, ...Array.from(elements)] 
+      : Array.from(elements);
     
     allElements.forEach(el => {
       Array.from(el.attributes).forEach(attr => {
@@ -259,7 +265,7 @@ export class TemplateBinder {
   /**
    * Process conditional rendering @if="condition"
    */
-  private processConditionals(element: Element): void {
+  private processConditionals(element: RootElement): void {
     const elements = Array.from(element.querySelectorAll('[\\@if]'));
     
     elements.forEach(el => {
@@ -283,7 +289,7 @@ export class TemplateBinder {
   /**
    * Process loops @for="itemsKey"
    */
-  private processLoops(element: Element): void {
+  private processLoops(element: RootElement): void {
     const allElements = Array.from(element.querySelectorAll('[\\@for]'));
     
     // Filter to only top-level loops (not nested inside another @for)
