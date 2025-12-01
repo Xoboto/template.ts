@@ -478,6 +478,53 @@
     </modal-demo>
   </div>
 
+  <!-- Example 12: Conditional Binding with Nested Expressions -->
+  <div class="example">
+    <h2>Example 12: Hierarchical Conditional Binding</h2>
+    <p style="margin-bottom: 15px; color: #7f8c8d;">
+      Demonstrates how @if correctly prevents evaluation of nested bindings when condition is false.
+    </p>
+    
+    <div id="conditional-binding-app">
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <button @on:click="loadUser" class="success">Load User</button>
+        <button @on:click="clearUser" class="danger">Clear User</button>
+        <button @on:click="simulateError">Simulate Error</button>
+      </div>
+
+      <div @if="loading" style="background: #e8f4f8; padding: 20px; border-radius: 5px; text-align: center; margin: 10px 0;">
+        <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #3498db; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="margin-top: 10px; color: #3498db;">Loading user data...</p>
+      </div>
+
+      <div @if="error" style="background: #ffe8e8; padding: 20px; border-radius: 5px; margin: 10px 0;">
+        <strong style="color: #e74c3c;">❌ Error:</strong>
+        <span style="color: #c0392b;">{{ error }}</span>
+      </div>
+
+      <div @if="user" style="background: #e8f8f5; padding: 20px; border-radius: 5px; margin: 10px 0;">
+        <strong style="color: #27ae60;">✅ User Loaded:</strong>
+        <div style="margin-top: 10px;">
+          <span style="font-weight: 500;">Name:</span> <span>{{ user.fullname }}</span>
+        </div>
+        <p style="margin-top: 10px; color: #7f8c8d; font-size: 14px;">
+          Note: The expression <code>{{ "{{" }} user.fullname }}</code> only evaluates when <code>user</code> exists,
+          preventing "undefined" errors thanks to hierarchical binding evaluation.
+        </p>
+      </div>
+
+      <div @if="!user && !loading && !error" style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 10px 0; text-align: center; color: #7f8c8d;">
+        <p>No user data available. Click "Load User" to fetch data.</p>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+
   <script type="module" src="./dist/examples/basic.js"></script>
   <script type="module" src="./dist/examples/counter.js"></script>
   <script type="module" src="./dist/examples/list.js"></script>
@@ -486,5 +533,6 @@
   <script type="module" src="./dist/examples/users.js"></script>
   <script type="module" src="./dist/examples/data-table-demo.js"></script>
   <script type="module" src="./dist/examples/modal-example.js"></script>
+  <script type="module" src="./dist/examples/conditional-binding.js"></script>
 </body>
 </html>

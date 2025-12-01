@@ -103,10 +103,151 @@ export class TemplateBinder {
    * Update the DOM with current state
    */
   public update(withAnimation: boolean = true): void {
-    this.updateTextBindings(withAnimation);
-    this.updateConditionals();
-    this.updateLoops();
-    this.updateAttributes(withAnimation);
+    if (!this.container) return;
+    
+    // Update hierarchically from root to children
+    this.updateHierarchically(this.container, withAnimation);
+  }
+
+  /**
+   * Update elements hierarchically, respecting conditional rendering
+   */
+  private updateHierarchically(element: RootElement, withAnimation: boolean = false): void {
+    // First update loops at this level
+    this.loopBindings.forEach(binding => {
+      if (binding.parentElement === element || (element instanceof Element && element.contains(binding.parentElement))) {
+        this.updateSingleLoop(binding);
+      }
+    });
+
+    // Get all child elements
+    const children = element instanceof Element 
+      ? [element, ...Array.from(element.querySelectorAll('*'))]
+      : Array.from(element.querySelectorAll('*'));
+
+    // Process each element in order
+    children.forEach(el => {
+      // 1. Check if parent is hidden by @if - skip if so
+      if (this.isElementHiddenByParent(el)) {
+        return;
+      }
+
+      // 2. Update conditionals for this element
+      const conditionalBinding = this.conditionalBindings.find(b => b.element === el);
+      if (conditionalBinding) {
+        const shouldShow = this.evaluateCondition(conditionalBinding.condition);
+        if (shouldShow !== conditionalBinding.isVisible) {
+          conditionalBinding.isVisible = shouldShow;
+          (conditionalBinding.element as HTMLElement).style.display = shouldShow 
+            ? conditionalBinding.originalDisplay 
+            : 'none';
+        }
+        
+        // If element is hidden, skip processing its content and children
+        if (!shouldShow) {
+          return;
+        }
+      }
+
+      // 3. Update text bindings for this element
+      this.bindings
+        .filter(b => b.element === el && b.property === 'textContent')
+        .forEach(binding => {
+          try {
+            const text = this.evaluateExpression(binding.expression);
+            if (binding.element.textContent !== text) {
+              binding.element.textContent = text;
+              if (withAnimation) {
+                this.applyTransition(binding.element);
+              }
+            }
+          } catch (e) {
+            // Silently skip if evaluation fails (e.g., user is undefined)
+            console.debug('Skipping text binding evaluation:', e);
+          }
+        });
+
+      // 4. Update attribute bindings for this element
+      this.bindings
+        .filter(b => b.element === el && b.property.startsWith('attribute:'))
+        .forEach(binding => {
+          try {
+            const attrName = binding.property.replace('attribute:', '');
+            const value = this.evaluateCode(binding.expression, this.state);
+            
+            if (binding.element.getAttribute(attrName) !== value) {
+              binding.element.setAttribute(attrName, value);
+              if (withAnimation) {
+                this.applyTransition(binding.element);
+              }
+            }
+          } catch (e) {
+            console.debug('Skipping attribute binding evaluation:', e);
+          }
+        });
+
+      this.bindings
+        .filter(b => b.element === el && b.property.startsWith('bool-attribute:'))
+        .forEach(binding => {
+          try {
+            const attrName = binding.property.replace('bool-attribute:', '');
+            const value = this.evaluateCode(binding.expression, this.state);
+            const hasAttr = binding.element.hasAttribute(attrName);
+            if (value && !hasAttr) {
+              binding.element.setAttribute(attrName, '');
+              if (withAnimation) {
+                this.applyTransition(binding.element);
+              }
+            } else if (!value && hasAttr) {
+              binding.element.removeAttribute(attrName);
+              if (withAnimation) {
+                this.applyTransition(binding.element);
+              }
+            }
+          } catch (e) {
+            console.debug('Skipping boolean attribute binding evaluation:', e);
+          }
+        });
+    });
+  }
+
+  /**
+   * Check if an element is hidden by any parent with @if
+   */
+  private isElementHiddenByParent(element: Element): boolean {
+    let parent = element.parentElement;
+    while (parent) {
+      const conditionalBinding = this.conditionalBindings.find(b => b.element === parent);
+      if (conditionalBinding && !conditionalBinding.isVisible) {
+        return true;
+      }
+      parent = parent.parentElement;
+    }
+    return false;
+  }
+
+  /**
+   * Update a single loop binding
+   */
+  private updateSingleLoop(binding: LoopBinding): void {
+    const items = this.state[binding.itemsKey];
+    
+    if (!Array.isArray(items)) {
+      return;
+    }
+
+    // Clear existing rendered elements
+    binding.renderedElements.forEach(el => el.remove());
+    binding.renderedElements = [];
+
+    // Render new elements
+    items.forEach((item, index) => {
+      const element = this.createLoopElement(binding.templateElement, item, index, items);
+      if (element) {
+        binding.parentElement.insertBefore(element, binding.placeholder.nextSibling);
+        binding.renderedElements.push(element);
+      }
+    });
   }
 
   /**
@@ -336,103 +477,8 @@ export class TemplateBinder {
    * Render the template
    */
   private render(): void {
-    this.updateTextBindings();
-    this.updateConditionals();
-    this.updateLoops();
-    this.updateAttributes();
-  }
-
-  /**
-   * Update text bindings
-   */
-  private updateTextBindings(withAnimation: boolean = false): void {
-    this.bindings.forEach(binding => {
-      if (binding.property === 'textContent') {
-        const text = this.evaluateExpression(binding.expression);
-        if (binding.element.textContent !== text) {
-          binding.element.textContent = text;
-          if (withAnimation) {
-            this.applyTransition(binding.element);
-          }
-        }
-      }
-    });
-  }
-
-  /**
-   * Update attribute bindings
-   */
-  private updateAttributes(withAnimation: boolean = false): void {
-    this.bindings.forEach(binding => {
-      if (binding.property.startsWith('attribute:')) {
-        const attrName = binding.property.replace('attribute:', '');
-        const value = this.evaluateCode(binding.expression, this.state);
-        
-        if (binding.element.getAttribute(attrName) !== value) {
-          binding.element.setAttribute(attrName, value);
-          if (withAnimation) {
-            this.applyTransition(binding.element);
-          }
-        }
-      } else if (binding.property.startsWith('bool-attribute:')) {
-        const attrName = binding.property.replace('bool-attribute:', '');
-        const value = this.evaluateCode(binding.expression, this.state);
-        const hasAttr = binding.element.hasAttribute(attrName);
-        if (value && !hasAttr) {
-          binding.element.setAttribute(attrName, '');
-          if (withAnimation) {
-            this.applyTransition(binding.element);
-          }
-        } else if (!value && hasAttr) {
-          binding.element.removeAttribute(attrName);
-          if (withAnimation) {
-            this.applyTransition(binding.element);
-          }
-        }
-      }
-    });
-  }
-
-  /**
-   * Update conditional bindings
-   */
-  private updateConditionals(): void {
-    this.conditionalBindings.forEach(binding => {
-      const shouldShow = this.evaluateCondition(binding.condition);
-      
-      if (shouldShow !== binding.isVisible) {
-        binding.isVisible = shouldShow;
-        (binding.element as HTMLElement).style.display = shouldShow 
-          ? binding.originalDisplay 
-          : 'none';
-      }
-    });
-  }
-
-  /**
-   * Update loop bindings
-   */
-  private updateLoops(): void {
-    this.loopBindings.forEach(binding => {
-      const items = this.state[binding.itemsKey];
-      
-      if (!Array.isArray(items)) {
-        return;
-      }
-
-      // Clear existing rendered elements
-      binding.renderedElements.forEach(el => el.remove());
-      binding.renderedElements = [];
-
-      // Render new elements
-      items.forEach((item, index) => {
-        const element = this.createLoopElement(binding.templateElement, item, index, items);
-        if (element) {
-          binding.parentElement.insertBefore(element, binding.placeholder.nextSibling);
-          binding.renderedElements.push(element);
-        }
-      });
-    });
+    // Use the new hierarchical update method for initial render
+    this.updateHierarchically(this.container!);
   }
 
   /**
