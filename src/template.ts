@@ -31,6 +31,8 @@ interface ConditionalBinding {
   condition: string;
   originalDisplay: string;
   isVisible: boolean;
+  parent: ParentNode | null;  // Can be Element or ShadowRoot
+  placeholder: Comment | null;
 }
 
 interface LoopBinding {
@@ -120,36 +122,36 @@ export class TemplateBinder {
       }
     });
 
-    // Get all child elements
+    // Update conditionals FIRST (before processing children)
+    this.conditionalBindings.forEach(binding => {
+      const shouldShow = this.evaluateCondition(binding.condition);
+      
+      if (shouldShow !== binding.isVisible) {
+        binding.isVisible = shouldShow;
+        
+        if (shouldShow && binding.parent && binding.placeholder) {
+          // Show: insert element back after placeholder
+          binding.parent.insertBefore(binding.element, binding.placeholder.nextSibling);
+        } else if (!shouldShow) {
+          // Hide: remove element from DOM
+          binding.element.remove();
+        }
+      }
+    });
+
+    // Get all child elements (after conditionals updated)
     const children = element instanceof Element 
       ? [element, ...Array.from(element.querySelectorAll('*'))]
       : Array.from(element.querySelectorAll('*'));
 
     // Process each element in order
     children.forEach(el => {
-      // 1. Check if parent is hidden by @if - skip if so
+      // Skip if parent is hidden by @if
       if (this.isElementHiddenByParent(el)) {
         return;
       }
 
-      // 2. Update conditionals for this element
-      const conditionalBinding = this.conditionalBindings.find(b => b.element === el);
-      if (conditionalBinding) {
-        const shouldShow = this.evaluateCondition(conditionalBinding.condition);
-        if (shouldShow !== conditionalBinding.isVisible) {
-          conditionalBinding.isVisible = shouldShow;
-          (conditionalBinding.element as HTMLElement).style.display = shouldShow 
-            ? conditionalBinding.originalDisplay 
-            : 'none';
-        }
-        
-        // If element is hidden, skip processing its content and children
-        if (!shouldShow) {
-          return;
-        }
-      }
-
-      // 3. Update text bindings for this element
+      // Update text bindings for this element
       this.bindings
         .filter(b => b.element === el && b.property === 'textContent')
         .forEach(binding => {
@@ -414,12 +416,23 @@ export class TemplateBinder {
       if (condition) {
         const computedStyle = window.getComputedStyle(el);
         const originalDisplay = computedStyle.display !== 'none' ? computedStyle.display : '';
+        
+        // Get parent - for Shadow DOM, parentElement is null, so use parentNode
+        const parent = el.parentNode;
+        
+        // Create placeholder comment for position tracking
+        const placeholder = parent ? document.createComment(`@if:${condition}`) : null;
+        if (parent && placeholder) {
+          parent.insertBefore(placeholder, el);
+        }
 
         this.conditionalBindings.push({
           element: el,
           condition: condition,
           originalDisplay: originalDisplay || 'block',
-          isVisible: true
+          isVisible: true,
+          parent: parent,
+          placeholder: placeholder
         });
 
         el.removeAttribute('@if');
