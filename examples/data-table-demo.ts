@@ -1,5 +1,5 @@
-import './data-table.js';
-import { DataTable } from './data-table.js';
+import './data-table';
+import { DataTable } from './data-table';
 
 // Example: Employee Management Table
 const employeeTable = new DataTable();

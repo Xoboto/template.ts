@@ -1,4 +1,4 @@
-import { TemplateBinder } from '../src/template.js';
+import { TemplateBinder } from '../src/template';
 
 const template = /*html*/`
 <style>
@@ -163,8 +163,8 @@ export class ModalDemo extends HTMLElement {
         const shadowRoot = this.attachShadow({ mode: 'open' });
         shadowRoot.innerHTML = template;
         this.binder = new TemplateBinder(shadowRoot, this.state);
-        this.binder.bind();
         this.binder.autoUpdate = true;
+        this.binder.bind();
     }
 
     openModal(options: {

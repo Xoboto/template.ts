@@ -1,5 +1,5 @@
-import { TemplateBinder } from '../src/template.js';
-import { ModalDemo } from './modal-demo.js';
+import { TemplateBinder } from '../src/template';
+import { ModalDemo } from './modal-demo';
 
 // Define the state for the example
 class AppState {

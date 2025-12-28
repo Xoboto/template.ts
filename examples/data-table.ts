@@ -1,4 +1,4 @@
-import { TemplateBinder } from '../src/template.js';
+import { TemplateBinder } from '../src/template';
 
 const template = /*html*/`
 <div class="data-table">
@@ -140,8 +140,8 @@ export class DataTable extends HTMLElement {
         this.innerHTML = template;
         this.state = new State();
         this.binder = new TemplateBinder(this, this.state);
-        this.binder.bind();
         this.binder.autoUpdate = true;
+        this.binder.bind();
     }
 
     connectedCallback(): void {
