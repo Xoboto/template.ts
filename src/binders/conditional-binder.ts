@@ -11,48 +11,48 @@ export class ConditionalBinder implements IBinder {
   readonly priority = 20;
   private bindings: ConditionalBinding[] = [];
 
-  process(element: RootElement, context: BinderContext): void {
-    const elements = Array.from(element.querySelectorAll('[\\@if]'));
+  canHandle(element: Element, context: BinderContext): boolean {
+    return element.hasAttribute('@if');
+  }
+
+  processElement(element: Element, context: BinderContext): void | 'skip-children' {
+    const condition = element.getAttribute('@if');
+    if (!condition) return;
+
+    const computedStyle = window.getComputedStyle(element);
+    const originalDisplay = computedStyle.display !== 'none' ? computedStyle.display : '';
     
-    elements.forEach((el: Element) => {
-      // Skip elements managed by another TemplateBinder
-      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
-        return;
-      }
-      
-      const condition = el.getAttribute('@if');
-      if (condition) {
-        const computedStyle = window.getComputedStyle(el);
-        const originalDisplay = computedStyle.display !== 'none' ? computedStyle.display : '';
-        
-        const parent = el.parentNode;
-        
-        const placeholder = parent ? document.createComment(`@if:${condition}`) : null;
-        if (parent && placeholder) {
-          parent.insertBefore(placeholder, el);
-        }
+    const parent = element.parentNode;
+    const placeholder = parent ? document.createComment(`@if:${condition}`) : null;
+    
+    if (parent && placeholder) {
+      parent.insertBefore(placeholder, element);
+    }
 
-        if (context.isStaticBinding) {
-          // For static bindings (loop items), evaluate immediately and don't store
-          const shouldShow = evaluateCondition(condition, context.state);
-          if (!shouldShow && el.parentNode) {
-            el.parentNode.removeChild(el);
-          }
-        } else {
-          // For dynamic bindings, store for updates
-          this.bindings.push({
-            element: el,
-            condition: condition,
-            originalDisplay: originalDisplay || 'block',
-            isVisible: true,
-            parent: parent,
-            placeholder: placeholder
-          });
-        }
-
-        el.removeAttribute('@if');
+    if (context.isStaticBinding) {
+      // For static bindings (loop items), evaluate once
+      const shouldShow = evaluateCondition(condition, context.state);
+      if (!shouldShow && element.parentNode) {
+        element.parentNode.removeChild(element);
+        return 'skip-children';
       }
-    });
+    } else {
+      // For dynamic bindings, store for updates
+      this.bindings.push({
+        element: element,
+        condition: condition,
+        originalDisplay: originalDisplay || 'block',
+        isVisible: true,
+        parent: parent,
+        placeholder: placeholder
+      });
+    }
+
+    element.removeAttribute('@if');
+  }
+
+  process(element: RootElement, context: BinderContext): void {
+    // Legacy method - not used with new hierarchical walker
   }
 
   update(context: BinderContext, withAnimation?: boolean): void {

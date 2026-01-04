@@ -18,45 +18,42 @@ export class PropertyBinder implements IBinder {
   readonly priority = 50;
   private bindings: BindingInfo[] = [];
 
-  process(element: RootElement, context: BinderContext): void {
-    const elements = element.querySelectorAll('*');
-    
-    const allElements = element instanceof Element 
-      ? [element, ...Array.from(elements)] 
-      : Array.from(elements);
-    
-    allElements.forEach(el => {
-      // Skip elements managed by another TemplateBinder
-      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
-        return;
-      }
-      
-      Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('@prop:')) {
-          const propertyName = kebabToCamel(attr.name.replace('@prop:', ''));
-          const expression = attr.value;
-          
+  canHandle(element: Element, context: BinderContext): boolean {
+    return Array.from(element.attributes).some(attr => 
+      attr.name.startsWith('@prop:')
+    );
+  }
+
+  processElement(element: Element, context: BinderContext): void | 'skip-children' {
+    Array.from(element.attributes).forEach(attr => {
+      if (attr.name.startsWith('@prop:')) {
+        const propertyName = kebabToCamel(attr.name.replace('@prop:', ''));
+        const expression = attr.value;
+        
         if (context.isStaticBinding) {
-          // For static bindings (loop items), evaluate immediately and don't store
+          // For static bindings (loop items), evaluate immediately
           try {
             const value = evaluateCode(expression, context.state);
-            (el as any)[propertyName] = value;
+            (element as any)[propertyName] = value;
           } catch (e) {
-            console.debug('Error evaluating static attribute binding:', e);
+            console.debug('Error evaluating static property binding:', e);
           }
         } else {
           // For dynamic bindings, store for updates
           this.bindings.push({
-            element: el,
+            element: element,
             property: `property:${propertyName}`,
             expression: expression
           });
         }
 
-          el.removeAttribute(attr.name);
-        }
-      });
+        element.removeAttribute(attr.name);
+      }
     });
+  }
+
+  process(element: RootElement, context: BinderContext): void {
+    // Legacy method - not used with new hierarchical walker
   }
 
   update(context: BinderContext, withAnimation?: boolean): void {

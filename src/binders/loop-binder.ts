@@ -11,70 +11,82 @@ export class LoopBinder implements IBinder {
   readonly priority = 10; // Must run first to generate elements
   private bindings: LoopBinding[] = [];
 
-  process(element: RootElement, context: BinderContext): void {
-    const allElements = Array.from(element.querySelectorAll('[\\@for]'));
-    
-    // Filter to only top-level loops (not nested inside another @for)
-    const topLevelElements = allElements.filter(el => {
-      // Skip elements managed by another TemplateBinder
-      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
-        return false;
-      }
-      
-      let parent = el.parentElement;
-      while (parent && parent !== element) {
-        if (parent.hasAttribute('@for')) {
-          return false;
-        }
-        parent = parent.parentElement;
-      }
-      return true;
-    });
-    
-    topLevelElements.forEach(el => {
-      const itemsKey = el.getAttribute('@for');
-      if (itemsKey) {
-        const templateElement = el.cloneNode(true) as Element;
-        const parent = el.parentElement;
-        
-        if (parent) {
-          const placeholder = document.createComment(`loop:${itemsKey}`);
-          parent.insertBefore(placeholder, el);
-          
-          if (context.isStaticBinding) {
-            // For static/nested loops, render immediately without storing
-            const items = context.state[itemsKey];
-            if (Array.isArray(items)) {
-              items.forEach((item, index) => {
-                const element = this.createLoopElement(
-                  templateElement, 
-                  item, 
-                  index, 
-                  items, 
-                  context,
-                  context.loopItem // Pass parent loop item to nested loops
-                );
-                if (element) {
-                  parent.insertBefore(element, placeholder.nextSibling);
-                }
-              });
-            }
-          } else {
-            // For dynamic loops, store for updates
-            this.bindings.push({
-              element: el,
-              itemsKey: itemsKey,
-              templateElement: templateElement,
-              parentElement: parent,
-              placeholder: placeholder,
-              renderedElements: []
-            });
-          }
+  canHandle(element: Element, context: BinderContext): boolean {
+    return element.hasAttribute('@for');
+  }
 
-          el.remove();
-        }
+  processElement(element: Element, context: BinderContext): void | 'skip-children' {
+    const itemsKey = element.getAttribute('@for');
+    if (!itemsKey) return;
+
+    // Clone AFTER removing @for so the template doesn't have it
+    element.removeAttribute('@for');
+    const templateElement = element.cloneNode(true) as Element;
+    
+    const parent = element.parentElement;
+    if (!parent) return;
+
+    const placeholder = document.createComment(`loop:${itemsKey}`);
+    parent.insertBefore(placeholder, element);
+    
+    if (context.isStaticBinding) {
+      // For static/nested loops, render immediately without storing
+      const items = context.state[itemsKey];
+      if (Array.isArray(items)) {
+        items.forEach((item, index) => {
+          const loopElement = this.createLoopElement(
+            templateElement, 
+            item, 
+            index, 
+            items, 
+            context,
+            context.loopItem
+          );
+          if (loopElement) {
+            parent.insertBefore(loopElement, placeholder.nextSibling);
+          }
+        });
       }
-    });
+    } else {
+      // For dynamic loops, store for updates
+      const binding: LoopBinding = {
+        element: element,
+        itemsKey: itemsKey,
+        templateElement: templateElement,
+        parentElement: parent,
+        placeholder: placeholder,
+        renderedElements: []
+      };
+      this.bindings.push(binding);
+      
+      // Initial render
+      const items = context.state[itemsKey];
+      if (Array.isArray(items)) {
+        items.forEach((item, index) => {
+          const loopElement = this.createLoopElement(
+            templateElement, 
+            item, 
+            index, 
+            items, 
+            context
+          );
+          if (loopElement) {
+            parent.insertBefore(loopElement, placeholder.nextSibling);
+            binding.renderedElements.push(loopElement);
+          }
+        });
+      }
+    }
+
+    // Remove the original template element from DOM
+    element.remove();
+    
+    // Skip children since we've cloned the template and will process it separately
+    return 'skip-children';
+  }
+
+  process(element: RootElement, context: BinderContext): void {
+    // Legacy method - not used with new hierarchical walker
   }
 
   update(context: BinderContext, withAnimation?: boolean): void {

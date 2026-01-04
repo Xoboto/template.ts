@@ -11,42 +11,50 @@ export class TextBinder implements IBinder {
   readonly priority = 30;
   private bindings: BindingInfo[] = [];
 
-  process(element: RootElement, context: BinderContext): void {
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
-
-    const textNodes: Node[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) {
-      if (node.textContent && node.textContent.includes('{{')) {
-        textNodes.push(node);
+  canHandle(element: Element, context: BinderContext): boolean {
+    // Only check direct child text nodes, not descendants
+    // This prevents processing text inside loop/conditional templates before they're processed
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const node = element.childNodes[i];
+      if (node.nodeType === Node.TEXT_NODE && node.textContent && node.textContent.includes('{{')) {
+        return true;
       }
     }
+    return false;
+  }
 
-    textNodes.forEach(node => {
-      const text = node.textContent || '';
-      const matches = text.match(/\{\{([^}]+)\}\}/g);
-      
-      if (matches && node.parentElement) {
-        if (context.isStaticBinding) {
-          // For static bindings (loop items), evaluate immediately and don't store
-          try {
-            const evaluatedText = evaluateExpression(text, context.state);
-            node.parentElement.textContent = evaluatedText;
-          } catch (e) {
-            console.debug('Error evaluating static text binding:', e);
-          }
-        } else {
-          // For dynamic bindings, store for updates
-          matches.forEach(() => {
+  processElement(element: Element, context: BinderContext): void | 'skip-children' {
+    // Only process direct child text nodes
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const node = element.childNodes[i];
+      if (node.nodeType === Node.TEXT_NODE && node.textContent && node.textContent.includes('{{')) {
+        const text = node.textContent;
+        const matches = text.match(/\{\{([^}]+)\}\}/g);
+        
+        if (matches) {
+          if (context.isStaticBinding) {
+            // For static bindings (loop items), evaluate immediately
+            try {
+              const evaluatedText = evaluateExpression(text, context.state);
+              node.textContent = evaluatedText;
+            } catch (e) {
+              console.debug('Error evaluating static text binding:', e);
+            }
+          } else {
+            // For dynamic bindings, store for updates
             this.bindings.push({
-              element: node.parentElement!,
+              element: element,
               property: 'textContent',
               expression: text
             });
-          });
+          }
         }
       }
-    });
+    }
+  }
+
+  process(element: RootElement, context: BinderContext): void {
+    // Legacy method - not used with new hierarchical walker
   }
 
   update(context: BinderContext, withAnimation?: boolean): void {

@@ -11,52 +11,49 @@ export class AttributeBinder implements IBinder {
   readonly priority = 40;
   private bindings: BindingInfo[] = [];
 
-  process(element: RootElement, context: BinderContext): void {
-    const elements = element.querySelectorAll('*');
-    
-    const allElements = element instanceof Element 
-      ? [element, ...Array.from(elements)] 
-      : Array.from(elements);
-    
-    allElements.forEach(el => {
-      // Skip elements managed by another TemplateBinder
-      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
-        return;
-      }
-      
-      Array.from(el.attributes).forEach(attr => {
-        const isBoolean = attr.name.startsWith('@batt:');
-        if (isBoolean || attr.name.startsWith('@att:')) {
-          const attrName = attr.name.replace(isBoolean ? '@batt:' : '@att:', '');
-          const expression = attr.value;
-          
-          if (context.isStaticBinding) {
-            // For static bindings (loop items), evaluate immediately and don't store
-            try {
-              const value = evaluateCode(expression, context.state);
-              if (isBoolean) {
-                if (value) {
-                  el.setAttribute(attrName, '');
-                }
-              } else {
-                el.setAttribute(attrName, value);
-              }
-            } catch (e) {
-              console.debug('Error evaluating static attribute binding:', e);
-            }
-          } else {
-            // For dynamic bindings, store for updates
-            this.bindings.push({
-              element: el,
-              property: isBoolean ? `bool-attribute:${attrName}` : `attribute:${attrName}`,
-              expression: expression
-            });
-          }
+  canHandle(element: Element, context: BinderContext): boolean {
+    return Array.from(element.attributes).some(attr => 
+      attr.name.startsWith('@att:') || attr.name.startsWith('@batt:')
+    );
+  }
 
-          el.removeAttribute(attr.name);
+  processElement(element: Element, context: BinderContext): void | 'skip-children' {
+    Array.from(element.attributes).forEach(attr => {
+      const isBoolean = attr.name.startsWith('@batt:');
+      if (isBoolean || attr.name.startsWith('@att:')) {
+        const attrName = attr.name.replace(isBoolean ? '@batt:' : '@att:', '');
+        const expression = attr.value;
+        
+        if (context.isStaticBinding) {
+          // For static bindings (loop items), evaluate immediately
+          try {
+            const value = evaluateCode(expression, context.state);
+            if (isBoolean) {
+              if (value) {
+                element.setAttribute(attrName, '');
+              }
+            } else {
+              element.setAttribute(attrName, value);
+            }
+          } catch (e) {
+            console.debug('Error evaluating static attribute binding:', e);
+          }
+        } else {
+          // For dynamic bindings, store for updates
+          this.bindings.push({
+            element: element,
+            property: isBoolean ? `bool-attribute:${attrName}` : `attribute:${attrName}`,
+            expression: expression
+          });
         }
-      });
+
+        element.removeAttribute(attr.name);
+      }
     });
+  }
+
+  process(element: RootElement, context: BinderContext): void {
+    // Legacy method - not used with new hierarchical walker
   }
 
   update(context: BinderContext, withAnimation?: boolean): void {

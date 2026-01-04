@@ -10,55 +10,52 @@ export class EventBinder implements IBinder {
   readonly priority = 60;
   private bindings: EventBinding[] = [];
 
-  process(element: RootElement, context: BinderContext): void {
-    const elements = element.querySelectorAll('*');
-    
-    const allElements = element instanceof Element 
-      ? [element, ...Array.from(elements)] 
-      : Array.from(elements);
-    
-    allElements.forEach(el => {
-      // Skip elements managed by another TemplateBinder
-      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
-        return;
-      }
-      
-      Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('@on:')) {
-          const eventName = attr.name.replace('@on:', '');
-          const handlerName = attr.value;
-          
-          this.bindings.push({
-            element: el,
-            event: eventName,
-            handler: handlerName
-          });
+  canHandle(element: Element, context: BinderContext): boolean {
+    return Array.from(element.attributes).some(attr => 
+      attr.name.startsWith('@on:')
+    );
+  }
 
-          // Attach the event listener
-          const handler = context.state[handlerName];
-          if (typeof handler === 'function') {
-            el.addEventListener(eventName, (ev) => {
-              // Pass loop item and index if available
-              const result = context.loopItem !== undefined 
-                ? handler.call(context.state, ev, context.loopItem, context.loopIndex)
-                : handler.call(context.state, ev);
-              
-              if (context.autoUpdate()) {
-                if (result && typeof result.then === 'function') {
-                  result.then(() => context.updateCallback());
-                } else {
-                  context.updateCallback();
-                }
+  processElement(element: Element, context: BinderContext): void | 'skip-children' {
+    Array.from(element.attributes).forEach(attr => {
+      if (attr.name.startsWith('@on:')) {
+        const eventName = attr.name.replace('@on:', '');
+        const handlerName = attr.value;
+        
+        this.bindings.push({
+          element: element,
+          event: eventName,
+          handler: handlerName
+        });
+
+        // Attach the event listener
+        const handler = context.state[handlerName];
+        if (typeof handler === 'function') {
+          element.addEventListener(eventName, (ev) => {
+            // Pass loop item and index if available
+            const result = context.loopItem !== undefined 
+              ? handler.call(context.state, ev, context.loopItem, context.loopIndex)
+              : handler.call(context.state, ev);
+            
+            if (context.autoUpdate()) {
+              if (result && typeof result.then === 'function') {
+                result.then(() => context.updateCallback());
+              } else {
+                context.updateCallback();
               }
-              
-              return result;
-            });
-          }
-
-          el.removeAttribute(attr.name);
+            }
+            
+            return result;
+          });
         }
-      });
+
+        element.removeAttribute(attr.name);
+      }
     });
+  }
+
+  process(element: RootElement, context: BinderContext): void {
+    // Legacy method - not used with new hierarchical walker
   }
 
   update(context: BinderContext, withAnimation?: boolean): void {

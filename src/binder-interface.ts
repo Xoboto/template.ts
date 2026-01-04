@@ -18,7 +18,19 @@ export interface IBinder {
   readonly priority: number;
 
   /**
-   * Process the template and extract bindings
+   * Check if this binder can handle the given element
+   */
+  canHandle(element: Element, context: BinderContext): boolean;
+
+  /**
+   * Process a single element
+   * @returns 'skip-children' to prevent processing child elements, void otherwise
+   */
+  processElement(element: Element, context: BinderContext): void | 'skip-children';
+
+  /**
+   * Process the template and extract bindings (legacy, will be removed)
+   * @deprecated Use canHandle/processElement instead
    */
   process(element: RootElement, context: BinderContext): void;
 
@@ -43,7 +55,6 @@ export interface BinderContext {
   updateCallback: () => void;
   conditionalBinder?: any; // Reference to ConditionalBinder for visibility checks
   bindElement?: (element: RootElement, contextState: State, loopItem?: any, loopIndex?: number) => void; // Callback to bind sub-elements
-  isElementInSubTemplate?: (element: Element) => boolean; // Check if element is managed by another TemplateBinder
   loopItem?: any; // Current loop item (for event handlers)
   loopIndex?: number; // Current loop index (for event handlers)
   isStaticBinding?: boolean; // If true, don't register bindings for updates (used in loops)

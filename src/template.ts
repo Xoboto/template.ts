@@ -55,6 +55,7 @@ export class TemplateBinder {
     this.originalTemplate = this.container.innerHTML;
 
     // Mark this element as having a template binder
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (this.container as any).__TEMPLATE_BINDER = this;
 
     // Create a proxy to track state changes
@@ -145,20 +146,6 @@ export class TemplateBinder {
   }
 
   /**
-   * Check if an element is managed by another TemplateBinder
-   */
-  private isElementInSubTemplate(element: Element, root: RootElement): boolean {
-    let current = element;
-    while (current && current !== root) {
-      if ((current as any).__TEMPLATE_BINDER && (current as any).__TEMPLATE_BINDER !== this) {
-        return true;
-      }
-      current = current.parentElement!;
-    }
-    return false;
-  }
-
-  /**
    * Create binder context
    */
   private createContext(): BinderContext {
@@ -169,8 +156,7 @@ export class TemplateBinder {
       updateCallback: () => this.update(),
       conditionalBinder: this.getConditionalBinder(),
       bindElement: (element: RootElement, contextState: State, loopItem?: any, loopIndex?: number) => 
-        this.bindElement(element, contextState, loopItem, loopIndex),
-      isElementInSubTemplate: (el: Element) => this.isElementInSubTemplate(el, this.container!)
+        this.bindElement(element, contextState, loopItem, loopIndex)
     };
   }
 
@@ -186,15 +172,14 @@ export class TemplateBinder {
       updateCallback: () => this.update(),
       conditionalBinder: this.getConditionalBinder(),
       bindElement: (el: RootElement, ctxState: State, item?: any, idx?: number) => this.bindElement(el, ctxState, item, idx),
-      isElementInSubTemplate: (el: Element) => this.isElementInSubTemplate(el, element),
       loopItem: loopItem,
       loopIndex: loopIndex,
       isStaticBinding: loopItem !== undefined // Mark as static if this is a loop item
     };
 
-    // Process all binders on this element
-    this.binders.forEach(binder => {
-      binder.process(element, context);
+    // Use hierarchical walker for consistent processing
+    this.walkElements(element, (el) => {
+      return this.processElementWithBinders(el, context);
     });
   }
 
@@ -220,10 +205,62 @@ export class TemplateBinder {
 
     const context = this.createContext();
     
-    // Process all binders in priority order
-    this.binders.forEach(binder => {
-      binder.process(this.container!, context);
+    // Walk DOM tree hierarchically and process each element with binders
+    this.walkElements(this.container, (element) => {
+      return this.processElementWithBinders(element, context);
     });
+  }
+
+  /**
+   * Walk DOM elements hierarchically (top-to-bottom)
+   */
+  private walkElements(root: RootElement, callback: (element: Element) => void | 'skip-children'): void {
+    const processElement = (element: Element): void => {
+      // Check if this element is managed by another TemplateBinder
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((element as any).__TEMPLATE_BINDER && (element as any).__TEMPLATE_BINDER !== this) {
+        return; // Skip sub-templates
+      }
+
+      // Process this element
+      const result = callback(element);
+      
+      // Skip children if requested or if element is a sub-template root
+      if (result === 'skip-children') {
+        return;
+      }
+
+      // Process children
+      const children = Array.from(element.children);
+      for (const child of children) {
+        processElement(child);
+      }
+    };
+
+    // Start with root's children (or root itself if it's an Element)
+    if (root instanceof Element) {
+      processElement(root);
+    } else {
+      // ShadowRoot case
+      const children = Array.from(root.children);
+      for (const child of children) {
+        processElement(child as Element);
+      }
+    }
+  }
+
+  /**
+   * Process a single element with all binders in priority order
+   */
+  private processElementWithBinders(element: Element, context: BinderContext): void | 'skip-children' {
+    for (const binder of this.binders) {
+      if (binder.canHandle(element, context)) {
+        const result = binder.processElement(element, context);
+        if (result === 'skip-children') {
+          return 'skip-children'; // Stop processing this element with other binders
+        }
+      }
+    }
   }
 
   /**
