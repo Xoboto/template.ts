@@ -19,6 +19,11 @@ export class AttributeBinder implements IBinder {
       : Array.from(elements);
     
     allElements.forEach(el => {
+      // Skip elements managed by another TemplateBinder
+      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
+        return;
+      }
+      
       Array.from(el.attributes).forEach(attr => {
         const isBoolean = attr.name.startsWith('@batt:');
         if (isBoolean || attr.name.startsWith('@att:')) {

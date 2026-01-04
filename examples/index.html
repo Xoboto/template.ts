@@ -387,7 +387,9 @@
     <p style="margin-bottom: 15px; color: #7f8c8d;">
       A sortable and searchable table component. Click headers to sort, use search to filter.
     </p>
-    <div id="employee-table"></div>
+    <div id="employee-table">
+      <data-table @prop:columns="columns" @prop:data="data"></data-table>
+    </div>
   </div>
 
   <!-- Example 8: DataTable - Product Inventory -->
@@ -396,7 +398,9 @@
     <p style="margin-bottom: 15px; color: #7f8c8d;">
       Browse and search through product catalog with real-time filtering.
     </p>
-    <div id="product-table"></div>
+    <div id="product-table">
+      <data-table @prop:columns="columns" @prop:data="data"></data-table>
+    </div>
   </div>
 
   <!-- Example 9: DataTable - Simple User List -->
@@ -405,7 +409,9 @@
     <p style="margin-bottom: 15px; color: #7f8c8d;">
       Minimal table without search or footer features.
     </p>
-    <div id="user-table"></div>
+    <div id="simple-user-table">
+      <data-table @prop:columns="columns" @prop:data="data" @prop:searchable="false" @prop:showFooter="false"></data-table>
+    </div>
   </div>
 
   <!-- Example 10: DataTable - Empty State -->
@@ -414,7 +420,9 @@
     <p style="margin-bottom: 15px; color: #7f8c8d;">
       Demonstrating how the table handles empty data with custom message.
     </p>
-    <div id="empty-table"></div>
+    <div id="empty-table">
+      <data-table @prop:columns="columns" @prop:data="data" @prop:empty-message="emptyMessage"></data-table>
+    </div>
   </div>
 
   <!-- Example 11: Modal Component -->

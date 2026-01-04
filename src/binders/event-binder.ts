@@ -7,7 +7,7 @@ import { IBinder, BinderContext } from '../binder-interface';
 import { EventBinding, RootElement } from '../types';
 
 export class EventBinder implements IBinder {
-  readonly priority = 50;
+  readonly priority = 60;
   private bindings: EventBinding[] = [];
 
   process(element: RootElement, context: BinderContext): void {
@@ -18,6 +18,11 @@ export class EventBinder implements IBinder {
       : Array.from(elements);
     
     allElements.forEach(el => {
+      // Skip elements managed by another TemplateBinder
+      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
+        return;
+      }
+      
       Array.from(el.attributes).forEach(attr => {
         if (attr.name.startsWith('@on:')) {
           const eventName = attr.name.replace('@on:', '');

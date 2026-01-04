@@ -16,6 +16,11 @@ export class LoopBinder implements IBinder {
     
     // Filter to only top-level loops (not nested inside another @for)
     const topLevelElements = allElements.filter(el => {
+      // Skip elements managed by another TemplateBinder
+      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
+        return false;
+      }
+      
       let parent = el.parentElement;
       while (parent && parent !== element) {
         if (parent.hasAttribute('@for')) {

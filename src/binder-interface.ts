@@ -43,6 +43,7 @@ export interface BinderContext {
   updateCallback: () => void;
   conditionalBinder?: any; // Reference to ConditionalBinder for visibility checks
   bindElement?: (element: RootElement, contextState: State, loopItem?: any, loopIndex?: number) => void; // Callback to bind sub-elements
+  isElementInSubTemplate?: (element: Element) => boolean; // Check if element is managed by another TemplateBinder
   loopItem?: any; // Current loop item (for event handlers)
   loopIndex?: number; // Current loop index (for event handlers)
   isStaticBinding?: boolean; // If true, don't register bindings for updates (used in loops)

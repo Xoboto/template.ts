@@ -14,7 +14,7 @@
 
 import { State, StateValue, RootElement } from './types';
 import { IBinder, BinderContext } from './binder-interface';
-import { ConditionalBinder, LoopBinder, TextBinder, AttributeBinder, EventBinder } from './binders';
+import { ConditionalBinder, LoopBinder, TextBinder, AttributeBinder, PropertyBinder, EventBinder } from './binders';
 
 export type { State, StateValue, RootElement } from './types';
 export type { IBinder, BinderContext } from './binder-interface';
@@ -54,6 +54,9 @@ export class TemplateBinder {
     this.state = initialState;
     this.originalTemplate = this.container.innerHTML;
 
+    // Mark this element as having a template binder
+    (this.container as any).__TEMPLATE_BINDER = this;
+
     // Create a proxy to track state changes
     this.stateProxy = new Proxy(this.state, {
       set: (target, property, value): boolean => {
@@ -74,7 +77,8 @@ export class TemplateBinder {
     this.addBinder(new ConditionalBinder()); // Priority 20
     this.addBinder(new TextBinder());        // Priority 30
     this.addBinder(new AttributeBinder());   // Priority 40
-    this.addBinder(new EventBinder());       // Priority 50
+    this.addBinder(new PropertyBinder());    // Priority 50
+    this.addBinder(new EventBinder());       // Priority 60
   }
 
   /**
@@ -141,6 +145,20 @@ export class TemplateBinder {
   }
 
   /**
+   * Check if an element is managed by another TemplateBinder
+   */
+  private isElementInSubTemplate(element: Element, root: RootElement): boolean {
+    let current = element;
+    while (current && current !== root) {
+      if ((current as any).__TEMPLATE_BINDER && (current as any).__TEMPLATE_BINDER !== this) {
+        return true;
+      }
+      current = current.parentElement!;
+    }
+    return false;
+  }
+
+  /**
    * Create binder context
    */
   private createContext(): BinderContext {
@@ -151,7 +169,8 @@ export class TemplateBinder {
       updateCallback: () => this.update(),
       conditionalBinder: this.getConditionalBinder(),
       bindElement: (element: RootElement, contextState: State, loopItem?: any, loopIndex?: number) => 
-        this.bindElement(element, contextState, loopItem, loopIndex)
+        this.bindElement(element, contextState, loopItem, loopIndex),
+      isElementInSubTemplate: (el: Element) => this.isElementInSubTemplate(el, this.container!)
     };
   }
 
@@ -167,6 +186,7 @@ export class TemplateBinder {
       updateCallback: () => this.update(),
       conditionalBinder: this.getConditionalBinder(),
       bindElement: (el: RootElement, ctxState: State, item?: any, idx?: number) => this.bindElement(el, ctxState, item, idx),
+      isElementInSubTemplate: (el: Element) => this.isElementInSubTemplate(el, element),
       loopItem: loopItem,
       loopIndex: loopIndex,
       isStaticBinding: loopItem !== undefined // Mark as static if this is a loop item

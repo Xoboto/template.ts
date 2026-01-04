@@ -15,6 +15,11 @@ export class ConditionalBinder implements IBinder {
     const elements = Array.from(element.querySelectorAll('[\\@if]'));
     
     elements.forEach((el: Element) => {
+      // Skip elements managed by another TemplateBinder
+      if (context.isElementInSubTemplate && context.isElementInSubTemplate(el)) {
+        return;
+      }
+      
       const condition = el.getAttribute('@if');
       if (condition) {
         const computedStyle = window.getComputedStyle(el);
