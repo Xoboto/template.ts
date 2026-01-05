@@ -3,6 +3,11 @@ import { resolve } from 'path';
 
 export default defineConfig({
   root: 'examples',
+  base: './',
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+  },
   resolve: {
     alias: {
       'template.ts': resolve(__dirname, 'dist/template.js'),

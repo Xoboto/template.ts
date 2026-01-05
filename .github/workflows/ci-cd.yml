@@ -208,7 +208,7 @@ jobs:
       if: steps.pages-check.outputs.result == 'true'
       uses: actions/upload-pages-artifact@v3
       with:
-        path: './examples'
+        path: './examples/dist'
     
     - name: Deploy to GitHub Pages
       if: steps.pages-check.outputs.result == 'true'

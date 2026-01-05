@@ -24,7 +24,7 @@
     "prepublishOnly": "npm run build",
     "dev": "npm run build:watch",
     "example": "npm run build && vite examples --open",
-    "example:build": "npm run build && vite build examples"
+    "example:build": "npm run build && vite build --config vite.config.ts"
   },
   "keywords": [
     "template",
