@@ -4,13 +4,13 @@
  */
 
 import { IBinder, BinderContext } from '../binder-interface';
-import { EventBinding, RootElement } from '../types';
+import { EventBinding } from '../types';
 
 export class EventBinder implements IBinder {
   readonly priority = 60;
   private bindings: EventBinding[] = [];
 
-  canHandle(element: Element, context: BinderContext): boolean {
+  canHandle(element: Element): boolean {
     return Array.from(element.attributes).some(attr => 
       attr.name.startsWith('@on:')
     );
@@ -54,11 +54,11 @@ export class EventBinder implements IBinder {
     });
   }
 
-  process(element: RootElement, context: BinderContext): void {
+  process(): void {
     // Legacy method - not used with new hierarchical walker
   }
 
-  update(context: BinderContext, withAnimation?: boolean): void {
+  update(): void {
     // Events don't need updating after initial processing
   }
 

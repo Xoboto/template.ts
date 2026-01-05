@@ -4,14 +4,14 @@
  */
 
 import { IBinder, BinderContext } from '../binder-interface';
-import { BindingInfo, RootElement } from '../types';
+import { BindingInfo } from '../types';
 import { evaluateExpression } from '../expression-evaluator';
 
 export class TextBinder implements IBinder {
   readonly priority = 30;
   private bindings: BindingInfo[] = [];
 
-  canHandle(element: Element, context: BinderContext): boolean {
+  canHandle(element: Element): boolean {
     // Only check direct child text nodes, not descendants
     // This prevents processing text inside loop/conditional templates before they're processed
     for (let i = 0; i < element.childNodes.length; i++) {
@@ -53,7 +53,7 @@ export class TextBinder implements IBinder {
     }
   }
 
-  process(element: RootElement, context: BinderContext): void {
+  process(): void {
     // Legacy method - not used with new hierarchical walker
   }
 
@@ -78,7 +78,7 @@ export class TextBinder implements IBinder {
     });
   }
 
-  clear(context: BinderContext): void {
+  clear(): void {
     this.bindings = [];
   }
 

@@ -5,7 +5,7 @@
 
 import { evaluateCode } from '../expression-evaluator';
 import { IBinder, BinderContext } from '../binder-interface';
-import { BindingInfo, RootElement } from '../types';
+import { BindingInfo } from '../types';
 
 /**
  * Convert kebab-case to camelCase
@@ -18,7 +18,7 @@ export class PropertyBinder implements IBinder {
   readonly priority = 50;
   private bindings: BindingInfo[] = [];
 
-  canHandle(element: Element, context: BinderContext): boolean {
+  canHandle(element: Element): boolean {
     return Array.from(element.attributes).some(attr => 
       attr.name.startsWith('@prop:')
     );
@@ -52,7 +52,7 @@ export class PropertyBinder implements IBinder {
     });
   }
 
-  process(element: RootElement, context: BinderContext): void {
+  process(): void {
     // Legacy method - not used with new hierarchical walker
   }
 
@@ -82,7 +82,7 @@ export class PropertyBinder implements IBinder {
       });
   }
 
-  clear(context: BinderContext): void {
+  clear(): void {
     this.bindings = [];
   }
 

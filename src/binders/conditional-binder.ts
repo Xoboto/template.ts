@@ -4,14 +4,14 @@
  */
 
 import { IBinder, BinderContext } from '../binder-interface';
-import { ConditionalBinding, RootElement } from '../types';
+import { ConditionalBinding } from '../types';
 import { evaluateCondition } from '../expression-evaluator';
 
 export class ConditionalBinder implements IBinder {
   readonly priority = 20;
   private bindings: ConditionalBinding[] = [];
 
-  canHandle(element: Element, context: BinderContext): boolean {
+  canHandle(element: Element): boolean {
     return element.hasAttribute('@if');
   }
 
@@ -51,11 +51,11 @@ export class ConditionalBinder implements IBinder {
     element.removeAttribute('@if');
   }
 
-  process(element: RootElement, context: BinderContext): void {
+  process(): void {
     // Legacy method - not used with new hierarchical walker
   }
 
-  update(context: BinderContext, withAnimation?: boolean): void {
+  update(context: BinderContext): void {
     this.bindings.forEach(binding => {
       const shouldShow = evaluateCondition(binding.condition, context.state);
       
@@ -74,7 +74,7 @@ export class ConditionalBinder implements IBinder {
     });
   }
 
-  clear(context: BinderContext): void {
+  clear(): void {
     this.bindings = [];
   }
 

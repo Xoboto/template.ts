@@ -4,14 +4,13 @@
  */
 
 import { IBinder, BinderContext } from '../binder-interface';
-import { LoopBinding, RootElement } from '../types';
-import { evaluateCode } from '../expression-evaluator';
+import { LoopBinding } from '../types';
 
 export class LoopBinder implements IBinder {
   readonly priority = 10; // Must run first to generate elements
   private bindings: LoopBinding[] = [];
 
-  canHandle(element: Element, context: BinderContext): boolean {
+  canHandle(element: Element): boolean {
     return element.hasAttribute('@for');
   }
 
@@ -85,17 +84,17 @@ export class LoopBinder implements IBinder {
     return 'skip-children';
   }
 
-  process(element: RootElement, context: BinderContext): void {
+  process(): void {
     // Legacy method - not used with new hierarchical walker
   }
 
-  update(context: BinderContext, withAnimation?: boolean): void {
+  update(context: BinderContext): void {
     this.bindings.forEach(binding => {
       this.updateSingleLoop(binding, context);
     });
   }
 
-  clear(context: BinderContext): void {
+  clear(): void {
     this.bindings.forEach(binding => {
       binding.renderedElements.forEach(el => el.remove());
     });

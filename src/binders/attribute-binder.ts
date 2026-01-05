@@ -4,14 +4,14 @@
  */
 
 import { IBinder, BinderContext } from '../binder-interface';
-import { BindingInfo, RootElement } from '../types';
+import { BindingInfo } from '../types';
 import { evaluateCode } from '../expression-evaluator';
 
 export class AttributeBinder implements IBinder {
   readonly priority = 40;
   private bindings: BindingInfo[] = [];
 
-  canHandle(element: Element, context: BinderContext): boolean {
+  canHandle(element: Element): boolean {
     return Array.from(element.attributes).some(attr => 
       attr.name.startsWith('@att:') || attr.name.startsWith('@batt:')
     );
@@ -52,7 +52,7 @@ export class AttributeBinder implements IBinder {
     });
   }
 
-  process(element: RootElement, context: BinderContext): void {
+  process(): void {
     // Legacy method - not used with new hierarchical walker
   }
 
@@ -111,7 +111,7 @@ export class AttributeBinder implements IBinder {
       });
   }
 
-  clear(context: BinderContext): void {
+  clear(): void {
     this.bindings = [];
   }
 
