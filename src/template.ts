@@ -9,52 +9,32 @@
  * - Conditional rendering with @if directive
  * - Support for nested templates and components
  * - Efficient DOM updates - only changed parts are refreshed
+ * - Modular binder architecture - extensible with custom binders
  */
 
-type StateValue = any;
-type State = Record<string, StateValue>;
+import { State, StateValue, RootElement } from './types';
+import { IBinder, BinderContext } from './binder-interface';
+import { ConditionalBinder, LoopBinder, TextBinder, AttributeBinder, PropertyBinder, EventBinder } from './binders';
 
-interface BindingInfo {
-  element: Element;
-  property: string;
-  expression: string;
-}
-
-interface EventBinding {
-  element: Element;
-  event: string;
-  handler: string;
-}
-
-interface ConditionalBinding {
-  element: Element;
-  condition: string;
-  originalDisplay: string;
-  isVisible: boolean;
-}
-
-interface LoopBinding {
-  element: Element;
-  itemsKey: string;
-  templateElement: Element;  // Store the actual element instead of HTML string
-  parentElement: Element;
-  placeholder: Comment;
-  renderedElements: Element[];
-}
-
-type RootElement = Element | ShadowRoot;
+export type { State, StateValue, RootElement } from './types';
+export type { IBinder, BinderContext } from './binder-interface';
 
 export class TemplateBinder {
   private container: RootElement | null;
   private state: State;
-  private bindings: BindingInfo[] = [];
-  private eventBindings: EventBinding[] = [];
-  private conditionalBindings: ConditionalBinding[] = [];
-  private loopBindings: LoopBinding[] = [];
+  private binders: IBinder[] = [];
   private originalTemplate: string = '';
   private stateProxy: State;
   private transitionClass?: string;
-  public autoUpdate: boolean = false;
+  private _autoUpdate: boolean = false;
+
+  public get autoUpdate(): boolean {
+    return this._autoUpdate;
+  }
+
+  public set autoUpdate(value: boolean) {
+    this._autoUpdate = value;
+  }
 
   constructor(selectorOrElement: string | RootElement, initialState: State = {}, transitionClass?: string) {
     if (transitionClass) {
@@ -74,6 +54,10 @@ export class TemplateBinder {
     this.state = initialState;
     this.originalTemplate = this.container.innerHTML;
 
+    // Mark this element as having a template binder
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (this.container as any).__TEMPLATE_BINDER = this;
+
     // Create a proxy to track state changes
     this.stateProxy = new Proxy(this.state, {
       set: (target, property, value): boolean => {
@@ -81,6 +65,54 @@ export class TemplateBinder {
         return true;
       }
     });
+
+    // Register default binders
+    this.registerDefaultBinders();
+  }
+
+  /**
+   * Register default binders with their priorities
+   */
+  private registerDefaultBinders(): void {
+    this.addBinder(new LoopBinder());        // Priority 10
+    this.addBinder(new ConditionalBinder()); // Priority 20
+    this.addBinder(new TextBinder());        // Priority 30
+    this.addBinder(new AttributeBinder());   // Priority 40
+    this.addBinder(new PropertyBinder());    // Priority 50
+    this.addBinder(new EventBinder());       // Priority 60
+  }
+
+  /**
+   * Add a custom binder to the collection
+   */
+  public addBinder(binder: IBinder): void {
+    this.binders.push(binder);
+    // Sort by priority (lower = earlier)
+    this.binders.sort((a, b) => a.priority - b.priority);
+  }
+
+  /**
+   * Remove a binder by instance
+   */
+  public removeBinder(binder: IBinder): void {
+    const index = this.binders.indexOf(binder);
+    if (index > -1) {
+      this.binders.splice(index, 1);
+    }
+  }
+
+  /**
+   * Get all registered binders
+   */
+  public getBinders(): IBinder[] {
+    return [...this.binders];
+  }
+
+  /**
+   * Get the ConditionalBinder instance
+   */
+  public getConditionalBinder(): ConditionalBinder | undefined {
+    return this.binders.find(b => b instanceof ConditionalBinder) as ConditionalBinder | undefined;
   }
 
   /**
@@ -92,7 +124,7 @@ export class TemplateBinder {
     // Clear previous bindings
     this.clearBindings();
 
-    // Process the template
+    // Process all binders
     this.processTemplate();
 
     // Initial render
@@ -105,148 +137,49 @@ export class TemplateBinder {
   public update(withAnimation: boolean = true): void {
     if (!this.container) return;
     
-    // Update hierarchically from root to children
-    this.updateHierarchically(this.container, withAnimation);
-  }
-
-  /**
-   * Update elements hierarchically, respecting conditional rendering
-   */
-  private updateHierarchically(element: RootElement, withAnimation: boolean = false): void {
-    // First update loops at this level
-    this.loopBindings.forEach(binding => {
-      if (binding.parentElement === element || (element instanceof Element && element.contains(binding.parentElement))) {
-        this.updateSingleLoop(binding);
-      }
-    });
-
-    // Get all child elements
-    const children = element instanceof Element 
-      ? [element, ...Array.from(element.querySelectorAll('*'))]
-      : Array.from(element.querySelectorAll('*'));
-
-    // Process each element in order
-    children.forEach(el => {
-      // 1. Check if parent is hidden by @if - skip if so
-      if (this.isElementHiddenByParent(el)) {
-        return;
-      }
-
-      // 2. Update conditionals for this element
-      const conditionalBinding = this.conditionalBindings.find(b => b.element === el);
-      if (conditionalBinding) {
-        const shouldShow = this.evaluateCondition(conditionalBinding.condition);
-        if (shouldShow !== conditionalBinding.isVisible) {
-          conditionalBinding.isVisible = shouldShow;
-          (conditionalBinding.element as HTMLElement).style.display = shouldShow 
-            ? conditionalBinding.originalDisplay 
-            : 'none';
-        }
-        
-        // If element is hidden, skip processing its content and children
-        if (!shouldShow) {
-          return;
-        }
-      }
-
-      // 3. Update text bindings for this element
-      this.bindings
-        .filter(b => b.element === el && b.property === 'textContent')
-        .forEach(binding => {
-          try {
-            const text = this.evaluateExpression(binding.expression);
-            if (binding.element.textContent !== text) {
-              binding.element.textContent = text;
-              if (withAnimation) {
-                this.applyTransition(binding.element);
-              }
-            }
-          } catch (e) {
-            // Silently skip if evaluation fails (e.g., user is undefined)
-            console.debug('Skipping text binding evaluation:', e);
-          }
-        });
-
-      // 4. Update attribute bindings for this element
-      this.bindings
-        .filter(b => b.element === el && b.property.startsWith('attribute:'))
-        .forEach(binding => {
-          try {
-            const attrName = binding.property.replace('attribute:', '');
-            const value = this.evaluateCode(binding.expression, this.state);
-            
-            if (binding.element.getAttribute(attrName) !== value) {
-              binding.element.setAttribute(attrName, value);
-              if (withAnimation) {
-                this.applyTransition(binding.element);
-              }
-            }
-          } catch (e) {
-            console.debug('Skipping attribute binding evaluation:', e);
-          }
-        });
-
-      this.bindings
-        .filter(b => b.element === el && b.property.startsWith('bool-attribute:'))
-        .forEach(binding => {
-          try {
-            const attrName = binding.property.replace('bool-attribute:', '');
-            const value = this.evaluateCode(binding.expression, this.state);
-            const hasAttr = binding.element.hasAttribute(attrName);
-            if (value && !hasAttr) {
-              binding.element.setAttribute(attrName, '');
-              if (withAnimation) {
-                this.applyTransition(binding.element);
-              }
-            } else if (!value && hasAttr) {
-              binding.element.removeAttribute(attrName);
-              if (withAnimation) {
-                this.applyTransition(binding.element);
-              }
-            }
-          } catch (e) {
-            console.debug('Skipping boolean attribute binding evaluation:', e);
-          }
-        });
-    });
-  }
-
-  /**
-   * Check if an element is hidden by any parent with @if
-   */
-  private isElementHiddenByParent(element: Element): boolean {
-    let parent = element.parentElement;
-    while (parent) {
-      const conditionalBinding = this.conditionalBindings.find(b => b.element === parent);
-      if (conditionalBinding && !conditionalBinding.isVisible) {
-        return true;
-      }
-      parent = parent.parentElement;
-    }
-    return false;
-  }
-
-  /**
-   * Update a single loop binding
-   */
-  private updateSingleLoop(binding: LoopBinding): void {
-    const items = this.state[binding.itemsKey];
+    const context = this.createContext();
     
-    if (!Array.isArray(items)) {
-      return;
-    }
+    // Update all binders
+    this.binders.forEach(binder => {
+      binder.update(context, withAnimation);
+    });
+  }
 
-    // Clear existing rendered elements
-    binding.renderedElements.forEach(el => el.remove());
-    binding.renderedElements = [];
+  /**
+   * Create binder context
+   */
+  private createContext(): BinderContext {
+    return {
+      state: this.state,
+      autoUpdate: () => this.autoUpdate,
+      transitionClass: this.transitionClass,
+      updateCallback: () => this.update(),
+      conditionalBinder: this.getConditionalBinder(),
+      bindElement: (element: RootElement, contextState: State, loopItem?: any, loopIndex?: number) => 
+        this.bindElement(element, contextState, loopItem, loopIndex)
+    };
+  }
 
-    // Render new elements
-    items.forEach((item, index) => {
-      const element = this.createLoopElement(binding.templateElement, item, index, items);
-      if (element) {
-        binding.parentElement.insertBefore(element, binding.placeholder.nextSibling);
-        binding.renderedElements.push(element);
-      }
+  /**
+   * Bind a specific element with given context state
+   * Used for nested/sub-binding (e.g., loop items)
+   */
+  private bindElement(element: RootElement, contextState: State, loopItem?: any, loopIndex?: number): void {
+    const context: BinderContext = {
+      state: contextState,
+      autoUpdate: () => this.autoUpdate,
+      transitionClass: this.transitionClass,
+      updateCallback: () => this.update(),
+      conditionalBinder: this.getConditionalBinder(),
+      bindElement: (el: RootElement, ctxState: State, item?: any, idx?: number) => this.bindElement(el, ctxState, item, idx),
+      loopItem: loopItem,
+      loopIndex: loopIndex,
+      isStaticBinding: loopItem !== undefined // Mark as static if this is a loop item
+    };
+
+    // Use hierarchical walker for consistent processing
+    this.walkElements(element, (el) => {
+      return this.processElementWithBinders(el, context);
     });
   }
 
@@ -270,494 +203,84 @@ export class TemplateBinder {
   private processTemplate(): void {
     if (!this.container) return;
 
-    // Process loops first (they generate elements)
-    this.processLoops(this.container);
-
-    // Process conditionals
-    this.processConditionals(this.container);
-
-    // Process text bindings
-    this.processTextBindings(this.container);
-
-    // Process attribute bindings
-    this.processAttributeBindings(this.container);
-
-    // Process event bindings
-    this.processEventBindings(this.container);
+    const context = this.createContext();
+    
+    // Walk DOM tree hierarchically and process each element with binders
+    this.walkElements(this.container, (element) => {
+      return this.processElementWithBinders(element, context);
+    });
   }
 
   /**
-   * Process text bindings with {{ expression }}
+   * Walk DOM elements hierarchically (top-to-bottom)
    */
-  private processTextBindings(element: RootElement): void {
-    const walker = document.createTreeWalker(
-      element,
-      NodeFilter.SHOW_TEXT,
-      null
-    );
+  private walkElements(root: RootElement, callback: (element: Element) => void | 'skip-children'): void {
+    const processElement = (element: Element): void => {
+      // Check if this element is managed by another TemplateBinder
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((element as any).__TEMPLATE_BINDER && (element as any).__TEMPLATE_BINDER !== this) {
+        return; // Skip sub-templates
+      }
 
-    const textNodes: Node[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) {
-      if (node.textContent && node.textContent.includes('{{')) {
-        textNodes.push(node);
+      // Process this element
+      const result = callback(element);
+      
+      // Skip children if requested or if element is a sub-template root
+      if (result === 'skip-children') {
+        return;
+      }
+
+      // Process children
+      const children = Array.from(element.children);
+      for (const child of children) {
+        processElement(child);
+      }
+    };
+
+    // Start with root's children (or root itself if it's an Element)
+    if (root instanceof Element) {
+      processElement(root);
+    } else {
+      // ShadowRoot case
+      const children = Array.from(root.children);
+      for (const child of children) {
+        processElement(child as Element);
       }
     }
-
-    textNodes.forEach(node => {
-      const text = node.textContent || '';
-      const matches = text.match(/\{\{([^}]+)\}\}/g);
-      
-      if (matches && node.parentElement) {
-        matches.forEach(() => {
-          this.bindings.push({
-            element: node.parentElement!,
-            property: 'textContent',
-            expression: text
-          });
-        });
-      }
-    });
   }
 
   /**
-   * Process attribute bindings @att:attributeName="expression"
+   * Process a single element with all binders in priority order
    */
-  private processAttributeBindings(element: RootElement): void {
-    // Get all elements in the container
-    const elements = element.querySelectorAll('*');
-    
-    // Also check the root element itself (only if it's an Element)
-    const allElements = element instanceof Element 
-      ? [element, ...Array.from(elements)] 
-      : Array.from(elements);
-    
-    allElements.forEach(el => {
-      Array.from(el.attributes).forEach(attr => {
-        const isBoolean = attr.name.startsWith('@batt:');
-        if (isBoolean || attr.name.startsWith('@att:')) {
-          const attrName = attr.name.replace(isBoolean ? '@batt:' : '@att:', '');
-          const expression = attr.value;
-          
-          this.bindings.push({
-            element: el,
-            property: isBoolean ? `bool-attribute:${attrName}` : `attribute:${attrName}`,
-            expression: expression
-          });
-
-          // Remove the directive attribute
-          el.removeAttribute(attr.name);
-        }
-      });
-    });
-  }
-
-  /**
-   * Process event bindings @on:eventName="handler"
-   */
-  private processEventBindings(element: RootElement): void {
-    // Get all elements in the container
-    const elements = element.querySelectorAll('*');
-    
-    // Also check the root element itself (only if it's an Element)
-    const allElements = element instanceof Element 
-      ? [element, ...Array.from(elements)] 
-      : Array.from(elements);
-    
-    allElements.forEach(el => {
-      Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('@on:')) {
-          const eventName = attr.name.replace('@on:', '');
-          const handlerName = attr.value;
-          
-          this.eventBindings.push({
-            element: el,
-            event: eventName,
-            handler: handlerName
-          });
-
-          // Attach the event listener
-          const handler = this.state[handlerName];
-          if (typeof handler === 'function') {
-            el.addEventListener(eventName, (ev) => {
-              const result = handler.call(this.state, ev);
-              
-              // Auto-update if enabled
-              if (this.autoUpdate) {
-                // If handler returns a Promise, wait for it
-                if (result && typeof result.then === 'function') {
-                  result.then(() => this.update());
-                } else {
-                  this.update();
-                }
-              }
-              
-              return result;
-            });
-          }
-
-          // Remove the directive attribute
-          el.removeAttribute(attr.name);
-        }
-      });
-    });
-  }
-
-  /**
-   * Process conditional rendering @if="condition"
-   */
-  private processConditionals(element: RootElement): void {
-    const elements = Array.from(element.querySelectorAll('[\\@if]'));
-    
-    elements.forEach(el => {
-      const condition = el.getAttribute('@if');
-      if (condition) {
-        const computedStyle = window.getComputedStyle(el);
-        const originalDisplay = computedStyle.display !== 'none' ? computedStyle.display : '';
-
-        this.conditionalBindings.push({
-          element: el,
-          condition: condition,
-          originalDisplay: originalDisplay || 'block',
-          isVisible: true
-        });
-
-        el.removeAttribute('@if');
-      }
-    });
-  }
-
-  /**
-   * Process loops @for="itemsKey"
-   */
-  private processLoops(element: RootElement): void {
-    const allElements = Array.from(element.querySelectorAll('[\\@for]'));
-    
-    // Filter to only top-level loops (not nested inside another @for)
-    const topLevelElements = allElements.filter(el => {
-      let parent = el.parentElement;
-      while (parent && parent !== element) {
-        if (parent.hasAttribute('@for')) {
-          return false; // This is nested, skip it
-        }
-        parent = parent.parentElement;
-      }
-      return true; // This is top-level
-    });
-    
-    topLevelElements.forEach(el => {
-      const itemsKey = el.getAttribute('@for');
-      if (itemsKey) {
-        // Clone the element before removing it - store element, not string
-        const templateElement = el.cloneNode(true) as Element;
-        const parent = el.parentElement;
-        
-        if (parent) {
-          // Create a placeholder comment
-          const placeholder = document.createComment(`loop:${itemsKey}`);
-          parent.insertBefore(placeholder, el);
-          
-          this.loopBindings.push({
-            element: el,
-            itemsKey: itemsKey,
-            templateElement: templateElement,  // Store the cloned element
-            parentElement: parent,
-            placeholder: placeholder,
-            renderedElements: []
-          });
-
-          // Remove the original element
-          el.remove();
+  private processElementWithBinders(element: Element, context: BinderContext): void | 'skip-children' {
+    for (const binder of this.binders) {
+      if (binder.canHandle(element, context)) {
+        const result = binder.processElement(element, context);
+        if (result === 'skip-children') {
+          return 'skip-children'; // Stop processing this element with other binders
         }
       }
-    });
+    }
   }
 
   /**
    * Render the template
    */
   private render(): void {
-    // Use the new hierarchical update method for initial render
-    this.updateHierarchically(this.container!);
-  }
-
-  /**
-   * Create an element for a loop iteration
-   */
-  private createLoopElement(templateElement: Element, item: any, index: number, items: any[], parentItem?: any): Element | null {
-    // Clone the template element - no parsing needed!
-    const element = templateElement.cloneNode(true) as Element;
-
-    // Remove @for attribute
-    element.removeAttribute('@for');
-
-    // Create a context for this iteration
-    const context: Record<string, any> = {
-      item: item,
-      index: index,
-      items: items,
-      parent: parentItem,
-      ...this.state
-    };
-
-    // FIRST: Process nested loops BEFORE evaluating text/attributes
-    // This prevents inner template content from being evaluated with wrong context
-    const allElements = [element, ...Array.from(element.querySelectorAll('*'))];
-    
-    allElements.forEach(el => {
-      if (el.hasAttribute('@for')) {
-        const nestedItemsKey = el.getAttribute('@for');
-        if (nestedItemsKey) {
-          const nestedItems = this.evaluateCode(nestedItemsKey, context);
-          
-          if (Array.isArray(nestedItems)) {
-            const parentEl = el.parentElement;
-            const nestedTemplateElement = el.cloneNode(true) as Element;
-
-            nestedItems.forEach((nestedItem: any, nestedIndex: number) => {
-              const nestedElement = this.createLoopElement(nestedTemplateElement, nestedItem, nestedIndex, nestedItems, context.item);
-              if (nestedElement) {
-                parentEl?.appendChild(nestedElement);
-              }
-            });
-
-            el.remove();
-          }
-        }
-      }
-    });
-
-    // SECOND: Process text content (after nested loops are handled)
-    const walker = document.createTreeWalker(
-      element,
-      NodeFilter.SHOW_TEXT,
-      null
-    );
-
-    const textNodes: Node[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) {
-      if (node.textContent && node.textContent.includes('{{')) {
-        textNodes.push(node);
-      }
-    }
-
-    textNodes.forEach(node => {
-      const text = node.textContent || '';
-      const evaluated = this.evaluateExpressionWithContext(text, context);
-      node.textContent = evaluated;
-    });
-
-    // THIRD: Process attributes (after nested loops and text)
-    const remainingElements = [element, ...Array.from(element.querySelectorAll('*'))];
-    
-    remainingElements.forEach(el => {
-      Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('@att:')) {
-          const attrName = attr.name.replace('@att:', '');
-          const value = this.evaluateCode(attr.value, context);
-          el.setAttribute(attrName, value);
-          el.removeAttribute(attr.name);
-        } else if (attr.name.startsWith('@batt:')) {
-          const attrName = attr.name.replace('@batt:', '');
-          const value = this.evaluateCode(attr.value, context);
-          if (value) {
-            el.setAttribute(attrName, '');
-          } else {
-            el.removeAttribute(attrName);
-          }
-          el.removeAttribute(attr.name);
-        } else if (attr.name.startsWith('@on:')) {
-          const eventName = attr.name.replace('@on:', '');
-          const handlerName = attr.value;
-          const handler = this.state[handlerName];
-          
-          if (typeof handler === 'function') {
-            el.addEventListener(eventName, (ev) => {
-              const result = handler.call(this.state, ev, item, index);
-              
-              // Auto-update if enabled
-              if (this.autoUpdate) {
-                // If handler returns a Promise, wait for it
-                if (result && typeof result.then === 'function') {
-                  result.then(() => this.update());
-                } else {
-                  this.update();
-                }
-              }
-              
-              return result;
-            });
-          }
-          el.removeAttribute(attr.name);
-        } else if (attr.name === '@if') {
-          const condition = attr.value;
-          const shouldShow = this.evaluateConditionWithContext(condition, context);
-          (el as HTMLElement).style.display = shouldShow ? '' : 'none';
-          el.removeAttribute('@if');
-        }
-      });
-    });
-
-    // Process conditionals within loop
-    const conditionalElements = Array.from(element.querySelectorAll('[\\@if]'));
-    conditionalElements.forEach(el => {
-      const condition = el.getAttribute('@if');
-      if (condition) {
-        const shouldShow = this.evaluateConditionWithContext(condition, context);
-        (el as HTMLElement).style.display = shouldShow ? '' : 'none';
-        el.removeAttribute('@if');
-      }
-    });
-
-    return element;
-  }
-
-  /**
-   * Evaluate an expression with the current state
-   */
-  private evaluateExpression(expression: string): string {
-    let result = expression;
-    
-    // Replace {{ expression }} with evaluated value
-    result = result.replace(/\{\{([^}]+)\}\}/g, (match, expr) => {
-      const trimmedExpr = expr.trim();
-      return this.evaluateCode(trimmedExpr, this.state);
-    });
-
-    return result;
-  }
-
-  /**
-   * Evaluate an expression with a specific context
-   */
-  private evaluateExpressionWithContext(expression: string, context: any): string {
-    let result = expression;
-    
-    result = result.replace(/\{\{([^}]+)\}\}/g, (match, expr) => {
-      const trimmedExpr = expr.trim();
-      return this.evaluateCode(trimmedExpr, context);
-    });
-
-    return result;
-  }
-
-  /**
-   * Evaluate a condition
-   */
-  private evaluateCondition(condition: string): boolean {
-    try {
-      return !!this.evaluateCode(condition, this.state);
-    } catch (e) {
-      console.error('Error evaluating condition:', condition, e);
-      return false;
-    }
-  }
-
-  /**
-   * Evaluate a condition with a specific context
-   */
-  private evaluateConditionWithContext(condition: string, context: any): boolean {
-    try {
-      return !!this.evaluateCode(condition, context);
-    } catch (e) {
-      console.error('Error evaluating condition:', condition, e);
-      return false;
-    }
-  }
-
-  /**
-   * Evaluate JavaScript code with a given context
-   */
-  private evaluateCode(code: string, context: any): any {
-    try {
-      // Check if code is a simple function call (e.g., "functionName()" or "functionName(arg1, arg2)")
-      const functionCallMatch = code.match(/^(\w+)\s*\((.*)\)$/);
-      
-      if (functionCallMatch) {
-        const functionName = functionCallMatch[1];
-        const argsString = functionCallMatch[2].trim();
-        
-        // Check if the function exists in the context
-        if (typeof context[functionName] === 'function') {
-          // Evaluate arguments if any
-          let args: any[] = [];
-          if (argsString) {
-            // Create a function to evaluate the arguments
-            const keys = Object.keys(context);
-            const values = keys.map(key => context[key]);
-            // eslint-disable-next-line no-new-func
-            const argFunc = new Function(...keys, `return [${argsString}]`);
-            args = argFunc(...values);
-          }
-          
-          // Call the function with proper this context
-          return context[functionName].apply(context, args);
-        }
-      }
-      
-      // Check if code is a simple property access (e.g., "functionName" without parentheses)
-      if (/^\w+$/.test(code) && typeof context[code] === 'function') {
-        // Return the function result by calling it
-        return context[code].call(context);
-      }
-      
-      // For complex expressions, use Function constructor
-      const keys = Object.keys(context);
-      const values = keys.map(key => context[key]);
-      
-      // eslint-disable-next-line no-new-func
-      const func = new Function(...keys, `return ${code}`);
-      return func(...values);
-    } catch (e) {
-      console.error('Error evaluating code:', code, e);
-      return '';
-    }
+    // Initial update with all binders
+    this.update(false);
   }
 
   /**
    * Clear all bindings
    */
   private clearBindings(): void {
-    // Remove event listeners
-    this.eventBindings.forEach(binding => {
-      const handler = this.state[binding.handler];
-      if (typeof handler === 'function') {
-        binding.element.removeEventListener(binding.event, handler);
-      }
+    const context = this.createContext();
+    
+    // Clear all binders
+    this.binders.forEach(binder => {
+      binder.clear(context);
     });
-
-    // Clear loop rendered elements
-    this.loopBindings.forEach(binding => {
-      binding.renderedElements.forEach(el => el.remove());
-    });
-
-    this.bindings = [];
-    this.eventBindings = [];
-    this.conditionalBindings = [];
-    this.loopBindings = [];
-  }
-
-  /**
-   * Apply transition effect to an element when its value updates
-   */
-  private applyTransition(element: Element): void {
-    if (!this.transitionClass) return;
-    element.classList.add(this.transitionClass);
-    
-    // Remove the class after animation completes
-    const removeTransition = (): void => {
-      element.classList.remove(this.transitionClass!);
-      element.removeEventListener('animationend', removeTransition);
-      element.removeEventListener('transitionend', removeTransition);
-    };
-    
-    // Listen for both animation and transition end events
-    element.addEventListener('animationend', removeTransition);
-    element.addEventListener('transitionend', removeTransition);
-    
-    // Fallback: remove after 600ms if no events fire
-    setTimeout(removeTransition, 600);
   }
 
   /**

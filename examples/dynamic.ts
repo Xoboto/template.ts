@@ -1,4 +1,4 @@
-import { TemplateBinder } from '../src/template.js';
+import { TemplateBinder } from '../src/template';
 
 type Status = 'active' | 'inactive';
 

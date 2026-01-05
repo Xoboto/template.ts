@@ -1,4 +1,4 @@
-import { TemplateBinder } from '../src/template.js';
+import { TemplateBinder } from '../src/template';
 
 const template = /*html*/`
 <div class="data-table">
@@ -108,26 +108,10 @@ class State {
         });
     }
 
-    setColumns(columns: Column[]) {
-        this.columns = columns;
-    }
-
     setData(data: any[]) {
         this.data = data;
         this.filterData();
         this.sortData();
-    }
-
-    setSearchable(searchable: boolean) {
-        this.searchable = searchable;
-    }
-
-    setShowFooter(show: boolean) {
-        this.showFooter = show;
-    }
-
-    setEmptyMessage(message: string) {
-        this.emptyMessage = message;
     }
 }
 
@@ -139,37 +123,52 @@ export class DataTable extends HTMLElement {
         super();
         this.innerHTML = template;
         this.state = new State();
-        this.binder = new TemplateBinder(this, this.state);
-        this.binder.bind();
+        this.binder = new TemplateBinder(this.children[0] as HTMLElement, this.state);
         this.binder.autoUpdate = true;
+        this.binder.bind();
     }
 
     connectedCallback(): void {
         // Initial setup if needed
     }
 
-    setColumns(columns: Column[]): void {
-        this.state.setColumns(columns);
+    get columns(): Column[] {
+        return this.state.columns;
+    }
+    set columns(value: Column[]) {
+        this.state.columns = value;
+        this.binder.update();
+    }
+    
+    get data(): any[] {
+        return this.state.data;
+    }
+    set data(value: any[]) {
+        this.state.setData(value);
         this.binder.update();
     }
 
-    setData(data: any[]): void {
-        this.state.setData(data);
+    get searchable(): boolean {
+        return this.state.searchable;
+    }
+    set searchable(value: boolean) {
+        this.state.searchable = value;
         this.binder.update();
     }
 
-    setSearchable(searchable: boolean): void {
-        this.state.setSearchable(searchable);
+    get showFooter(): boolean {
+        return this.state.showFooter;
+    }
+    set showFooter(value: boolean) {
+        this.state.showFooter = value;
         this.binder.update();
     }
 
-    setShowFooter(show: boolean): void {
-        this.state.setShowFooter(show);
-        this.binder.update();
+    get emptyMessage(): string {
+        return this.state.emptyMessage;
     }
-
-    setEmptyMessage(message: string): void {
-        this.state.setEmptyMessage(message);
+    set emptyMessage(value: string) {
+        this.state.emptyMessage = value;
         this.binder.update();
     }
 }

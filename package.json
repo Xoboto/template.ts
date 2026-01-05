@@ -1,6 +1,6 @@
 {
   "name": "template.ts",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "description": "A powerful, lightweight TypeScript template engine with reactive data binding, conditional rendering, loops, and events",
   "main": "dist/template.js",
   "module": "dist/template.js",
@@ -14,7 +14,6 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "build:examples": "tsc -p examples/tsconfig.json",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",
@@ -24,7 +23,8 @@
     "prebuild": "npm run clean",
     "prepublishOnly": "npm run build",
     "dev": "npm run build:watch",
-    "example": "npm run build && npm run build:examples && npx http-server . -p 8080 -c-1 -o /examples/"
+    "example": "npm run build && vite examples --open",
+    "example:build": "npm run build && vite build examples"
   },
   "keywords": [
     "template",
@@ -74,7 +74,8 @@
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.0",
     "rimraf": "^5.0.5",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vite": "^6.0.0"
   },
   "eslintConfig": {
     "extends": [

@@ -20,7 +20,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        node-version: [18.x, 20.x]
     
     steps:
     - name: Checkout code
@@ -50,7 +50,7 @@ jobs:
         CI: true
     
     - name: Build examples
-      run: npm run build:examples
+      run: npm run example:build
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -178,7 +178,7 @@ jobs:
       run: npm run build
     
     - name: Build examples
-      run: npm run build:examples
+      run: npm run example:build
     
     - name: Check if Pages is enabled
       id: pages-check
