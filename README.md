@@ -17,6 +17,7 @@ Template.Ts is a simple yet powerful template engine that allows you to create d
 - `@if="condition"` - Conditional rendering
 - `@att:name="value"` - Dynamic attribute binding
 - `@batt:name="condition"` - Boolean attribute binding
+- `@prop:name="value"` - Custom element property binding
 - `@on:event="handler"` - Event handling
 
 🚀 **Lightweight** - Zero dependencies, minimal footprint
@@ -242,6 +243,45 @@ binder.bind();
 **Difference between @att: and @batt:**
 - `@att:disabled="value"` → Sets `disabled="value"` (always present with the value)
 - `@batt:disabled="condition"` → Adds `disabled=""` if condition is truthy, removes it if falsy
+
+### Custom Element Properties with @prop:
+
+Use `@prop:` to bind JavaScript properties directly to custom elements (Web Components). Unlike `@att:` which sets HTML attributes, `@prop:` sets element properties:
+
+```html
+<div id="app">
+  <data-table 
+    @prop:columns="columns" 
+    @prop:data="tableData"
+    @prop:searchable="true"
+    @prop:empty-message="emptyMessage">
+  </data-table>
+</div>
+```
+
+```typescript
+const state = {
+  columns: ['Name', 'Email', 'Role'],
+  tableData: [
+    { name: 'John', email: 'john@example.com', role: 'Admin' },
+    { name: 'Jane', email: 'jane@example.com', role: 'User' }
+  ],
+  emptyMessage: 'No data available'
+};
+
+const binder = new TemplateBinder('#app', state);
+binder.bind();
+```
+
+**Key Points:**
+- Attribute names in HTML are automatically converted from kebab-case to camelCase
+- `@prop:empty-message` becomes `element.emptyMessage`
+- Perfect for passing complex data (objects, arrays) to Web Components
+- Properties are set directly on the element object, not as HTML attributes
+
+**When to use @prop: vs @att::**
+- Use `@prop:` for Web Components and custom elements
+- Use `@att:` for standard HTML attributes on native elements
 
 ### Event Handling with @on:
 
@@ -592,6 +632,7 @@ binder.destroy();
 | `@if="condition"` | Conditional rendering | `<p @if="isVisible">Hello</p>` |
 | `@att:name="value"` | Dynamic attribute | `<div @att:class="className"></div>` |
 | `@batt:name="condition"` | Boolean attribute | `<input @batt:checked="isSelected" />` |
+| `@prop:name="value"` | Element property | `<data-table @prop:data="items"></data-table>` |
 | `@on:event="handler"` | Event listener | `<button @on:click="handleClick">Click</button>` |
 
 ## TypeScript Support
@@ -687,6 +728,69 @@ const binder = new TemplateBinder('#app', state, 'my-transition');
 > NOTE: The transition css will apply to element once .update() call.
 
 > NOTE: .update method can be called with `withAnimation` parameter to control animation when needed to bypass animation. the default value is **true**.
+
+## Creating Custom Binders
+
+You can extend Template.Ts by creating custom binders that implement the `IBinder` interface:
+
+```typescript
+import { IBinder, BinderContext } from 'template.ts';
+
+class MyCustomBinder implements IBinder {
+  readonly priority = 70; // Lower numbers execute first
+  private bindings: any[] = [];
+
+  // Check if this binder should handle the element
+  canHandle(element: Element, _context: BinderContext): boolean {
+    return element.hasAttribute('@custom:action');
+  }
+
+  // Process the element (called once during bind)
+  processElement(element: Element, context: BinderContext): void | 'skip-children' {
+    const action = element.getAttribute('@custom:action');
+    
+    if (context.isStaticBinding) {
+      // Handle static binding (e.g., in loops)
+      // Evaluate immediately
+    } else {
+      // Store for dynamic updates
+      this.bindings.push({ element, action });
+    }
+    
+    element.removeAttribute('@custom:action');
+    // Return 'skip-children' to prevent processing child elements
+  }
+
+  // Legacy method - not used with hierarchical walker
+  process(_context: BinderContext): void {}
+
+  // Update bound elements when state changes
+  update(context: BinderContext, _withAnimation?: boolean): void {
+    this.bindings.forEach(binding => {
+      // Update logic here
+    });
+  }
+
+  // Clean up bindings
+  clear(_context: BinderContext): void {
+    this.bindings = [];
+  }
+}
+
+// Register your custom binder
+const binder = new TemplateBinder('#app', state);
+binder.addBinder(new MyCustomBinder());
+binder.bind();
+```
+
+**Priority Order:**
+- 10: LoopBinder (`@for`)
+- 20: ConditionalBinder (`@if`)
+- 30: TextBinder (`{{ }}`)
+- 40: AttributeBinder (`@att:`, `@batt:`)
+- 50: PropertyBinder (`@prop:`)
+- 60: EventBinder (`@on:`)
+- 70+: Your custom binders
 
 ## Browser Support
 
